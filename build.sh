@@ -23,11 +23,11 @@ DOCKER_IMAGENAME=mcr.microsoft.com/dotnet/core/sdk:3.0
 # This will actually break quoted arguments, arguments like
 # -test "hello world" will be broken into three arguments instead of two, as it should.
 temp="${args[@]}"
-args=($temp)
+args=("$temp")
 
 BUILD_COMMAND=/opt/code/run-build.sh "${args[@]}"
 
-[ -z "$DOCKER_HOST_SHARE_DIR" ] && DOCKER_HOST_SHARE_DIR=$(pwd)
+[ -z "$DOCKER_HOST_SHARE_DIR" ] && DOCKER_HOST_SHARE_DIR=$PWD
 
 # Make container names CI-specific if we're running in CI
 #  Jenkins
@@ -42,6 +42,6 @@ echo "Using code from: $DOCKER_HOST_SHARE_DIR"
 
 docker run -t --rm --sig-proxy=true \
     --name docker-orleansbuild \
-    -v $DOCKER_HOST_SHARE_DIR:/opt/code \
+    -v "$DOCKER_HOST_SHARE_DIR":/opt/code \
     -w /opt/code \
-    $DOCKER_IMAGENAME $BUILD_COMMAND "$@"
+    "$DOCKER_IMAGENAME" "$BUILD_COMMAND" "$@"
