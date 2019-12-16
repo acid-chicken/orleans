@@ -16,15 +16,15 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 REPOROOT="$DIR"
 
 # Set nuget package cache under the repo
-[ -z $NUGET_PACKAGES ] && export NUGET_PACKAGES="$REPOROOT/.nuget/packages"
+[ -z "$NUGET_PACKAGES" ] && export NUGET_PACKAGES="$REPOROOT/.nuget/packages"
 
 args=( "$@" )
 
 while [[ $# > 0 ]]; do
-    lowerI="$(echo $1 | awk '{print tolower($0)}')"
+    lowerI="$(echo "$1" | awk '{print tolower($0)}')"
     case $lowerI in
         -c|--configuration)
-            export CONFIGURATION=$2
+            export CONFIGURATION="$2"
             args=( "${args[@]/$1}" )
             args=( "${args[@]/$2}" )
             shift
@@ -48,15 +48,15 @@ done
 # This will actually break quoted arguments, arguments like
 # -test "hello world" will be broken into three arguments instead of two, as it should.
 temp="${args[@]}"
-args=($temp)
+args=("$temp")
 
 # Increases the file descriptors limit for this bash. It prevents an issue we were hitting during restore
 FILE_DESCRIPTOR_LIMIT=$( ulimit -n )
-if [ $FILE_DESCRIPTOR_LIMIT -lt 1024 ]
+if [ "$FILE_DESCRIPTOR_LIMIT" -lt 1024 ]
 then
     echo "Increasing file description limit to 1024"
     ulimit -n 1024
 fi
 
-dotnet build Orleans.sln /p:Configuration=$CONFIGURATION ${args[@]}
-dotnet pack Orleans.sln /p:Configuration=$CONFIGURATION ${args[@]}
+dotnet build Orleans.sln /p:Configuration="$CONFIGURATION" "${args[@]}"
+dotnet pack Orleans.sln /p:Configuration="$CONFIGURATION" "${args[@]}"
