@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Orleans.Transactions.TestKit
 {
-    public interface ITransactionFaultInjector
-    {
-        void BeforeStore();
-        void AfterStore();
-    }
+public interface ITransactionFaultInjector
+{
+    void BeforeStore();
+    void AfterStore();
+}
 }

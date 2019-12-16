@@ -7,9 +7,15 @@ using Orleans.Transactions.Abstractions;
 
 namespace Orleans.Transactions.TestKit
 {
-    public interface IControlledTransactionFaultInjector : ITransactionFaultInjector
-    {
-        bool InjectBeforeStore { get; set; }
-        bool InjectAfterStore { get; set; }
+public interface IControlledTransactionFaultInjector : ITransactionFaultInjector
+{
+    bool InjectBeforeStore {
+        get;
+        set;
     }
+    bool InjectAfterStore {
+        get;
+        set;
+    }
+}
 }

@@ -4,8 +4,11 @@ using System.Text;
 
 namespace Orleans.Transactions.TestKit
 {
-    public interface ITestState
-    {
-        int state { get; set; }
+public interface ITestState
+{
+    int state {
+        get;
+        set;
     }
+}
 }
