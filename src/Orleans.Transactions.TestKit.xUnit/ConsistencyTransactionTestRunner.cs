@@ -7,19 +7,17 @@ using Orleans.Transactions.TestKit.Consistency;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Orleans.Transactions.TestKit.xUnit
-{
-    public class ConsistencyTransactionTestRunnerxUnit : ConsistencyTransactionTestRunner
-    {
-        public ConsistencyTransactionTestRunnerxUnit(IGrainFactory grainFactory, ITestOutputHelper output)
-            :base(grainFactory, output.WriteLine)
-        {
-        }
+namespace Orleans.Transactions.TestKit.xUnit {
+  public class ConsistencyTransactionTestRunnerxUnit
+      : ConsistencyTransactionTestRunner {
+    public ConsistencyTransactionTestRunnerxUnit(IGrainFactory grainFactory,
+                                                 ITestOutputHelper output)
+        : base(grainFactory, output.WriteLine) {}
 
-        protected override bool StorageAdaptorHasLimitedCommitSpace => true;
-        protected override bool StorageErrorInjectionActive => true;
+    protected override bool StorageAdaptorHasLimitedCommitSpace => true;
+    protected override bool StorageErrorInjectionActive => true;
 
-        [SkippableTheory]
+    [SkippableTheory]
         // high congestion
         [InlineData(2, 2, true, true, ReadWriteDetermination.PerGrain)]
         [InlineData(2, 3, true, true, ReadWriteDetermination.PerGrain)]
@@ -86,9 +84,12 @@ namespace Orleans.Transactions.TestKit.xUnit
         [InlineData(1000, 2, false, true, ReadWriteDetermination.PerGrain)]
         [InlineData(1000, 3, false, true, ReadWriteDetermination.PerGrain)]
         [InlineData(1000, 4, false, true, ReadWriteDetermination.PerGrain)]
-        [InlineData(1000, 2, false, true, ReadWriteDetermination.PerTransaction)]
-        [InlineData(1000, 3, false, true, ReadWriteDetermination.PerTransaction)]
-        [InlineData(1000, 4, false, true, ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 2, false, true,
+                    ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 3, false, true,
+                    ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 4, false, true,
+                    ReadWriteDetermination.PerTransaction)]
         [InlineData(1000, 2, false, true, ReadWriteDetermination.PerAccess)]
         [InlineData(1000, 3, false, true, ReadWriteDetermination.PerAccess)]
         [InlineData(1000, 4, false, true, ReadWriteDetermination.PerAccess)]
@@ -96,18 +97,24 @@ namespace Orleans.Transactions.TestKit.xUnit
         [InlineData(1000, 3, false, false, ReadWriteDetermination.PerGrain)]
         [InlineData(1000, 4, false, false, ReadWriteDetermination.PerGrain)]
         [InlineData(1000, 5, false, false, ReadWriteDetermination.PerGrain)]
-        [InlineData(1000, 2, false, false, ReadWriteDetermination.PerTransaction)]
-        [InlineData(1000, 3, false, false, ReadWriteDetermination.PerTransaction)]
-        [InlineData(1000, 4, false, false, ReadWriteDetermination.PerTransaction)]
-        [InlineData(1000, 5, false, false, ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 2, false, false,
+                    ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 3, false, false,
+                    ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 4, false, false,
+                    ReadWriteDetermination.PerTransaction)]
+        [InlineData(1000, 5, false, false,
+                    ReadWriteDetermination.PerTransaction)]
         [InlineData(1000, 2, false, false, ReadWriteDetermination.PerAccess)]
         [InlineData(1000, 3, false, false, ReadWriteDetermination.PerAccess)]
         [InlineData(1000, 4, false, false, ReadWriteDetermination.PerAccess)]
         [InlineData(1000, 5, false, false, ReadWriteDetermination.PerAccess)]
-        public override Task RandomizedConsistency(int numGrains, int scale, bool avoidDeadlocks,
-            bool avoidTimeouts, ReadWriteDetermination readwrite)
-        {
-            return base.RandomizedConsistency(numGrains, scale, avoidDeadlocks, avoidTimeouts, readwrite);
-        }
+        public override Task
+        RandomizedConsistency(int numGrains, int scale, bool avoidDeadlocks,
+                              bool avoidTimeouts,
+                              ReadWriteDetermination readwrite) {
+      return base.RandomizedConsistency(numGrains, scale, avoidDeadlocks,
+                                        avoidTimeouts, readwrite);
     }
+  }
 }

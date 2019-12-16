@@ -19,7 +19,7 @@
       <Visible>false</Visible>
     </Compile>
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="System.Runtime" Version="$(SystemRuntimeVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
@@ -31,7 +31,7 @@
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="$(MicrosoftBclAsyncInterfacesVersion)" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" Version="$(MicrosoftNETFrameworkReferenceAssembliesVersion)" />
   </ItemGroup>
-  
+
   <!-- Packages included explicitly to prevent build warnings about inconsistent versions -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Win32.Registry" Version="$(MicrosoftWin32RegistryVersion)" />
