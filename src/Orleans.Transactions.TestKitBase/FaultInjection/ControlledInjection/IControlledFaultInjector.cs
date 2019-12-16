@@ -5,17 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 using Orleans.Transactions.Abstractions;
 
-namespace Orleans.Transactions.TestKit
-{
-public interface IControlledTransactionFaultInjector : ITransactionFaultInjector
-{
+namespace Orleans.Transactions.TestKit {
+  public interface IControlledTransactionFaultInjector
+      : ITransactionFaultInjector {
     bool InjectBeforeStore {
-        get;
-        set;
+      get;
+      set;
     }
     bool InjectAfterStore {
-        get;
-        set;
+      get;
+      set;
     }
-}
+  }
 }

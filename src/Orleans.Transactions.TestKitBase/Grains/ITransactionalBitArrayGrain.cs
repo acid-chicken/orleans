@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Orleans.Transactions.TestKit.Correctnesss
-{
-public interface ITransactionalBitArrayGrain : IGrainWithGuidKey
-{
+namespace Orleans.Transactions.TestKit.Correctnesss {
+  public interface ITransactionalBitArrayGrain : IGrainWithGuidKey {
     /// <summary>
     /// Ping
     /// </summary>
@@ -16,13 +14,13 @@ public interface ITransactionalBitArrayGrain : IGrainWithGuidKey
     /// </summary>
     /// <param name="newValue"></param>
     /// <returns></returns>
-    [Transaction(TransactionOption.CreateOrJoin)]
-    Task SetBit(int newValue);
+    [Transaction(TransactionOption.CreateOrJoin)] Task SetBit(int newValue);
 
     /// <summary>
-    /// Performs a read transaction on each state, returning the results in order.
+    /// Performs a read transaction on each state, returning the results in
+    /// order.
     /// </summary>
-    [Transaction(TransactionOption.CreateOrJoin)]
-    Task<List<BitArrayState>> Get();
-}
+    [Transaction(TransactionOption.CreateOrJoin)] Task<List<BitArrayState>>
+    Get();
+  }
 }
