@@ -2,16 +2,14 @@
 using AspNetCoreHostedServices.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCoreHostedServices.Grains
-{
-    public class HelloWorldGrain : Orleans.Grain, IHelloWorld
-    {
-        private readonly ILogger<HelloWorldGrain> _logger;
+namespace AspNetCoreHostedServices.Grains {
+  public class HelloWorldGrain : Orleans.Grain, IHelloWorld {
+    private readonly ILogger<HelloWorldGrain>_logger;
 
-        public HelloWorldGrain(ILogger<HelloWorldGrain> logger) {
-            this._logger = logger;
-        }
-
-        public Task<string> SayHello() => Task.FromResult("Hello world!");
+    public HelloWorldGrain(ILogger<HelloWorldGrain>logger) {
+      this._logger = logger;
     }
+
+    public Task<string>SayHello() => Task.FromResult("Hello world!");
+  }
 }

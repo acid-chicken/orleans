@@ -1,7 +1,3 @@
-﻿namespace ASPNetCoreHostedServices.Internal
-{
-    public class HelloWorldClientHostedService
-    {
-        
-    }
+﻿namespace ASPNetCoreHostedServices.Internal {
+  public class HelloWorldClientHostedService {}
 }
