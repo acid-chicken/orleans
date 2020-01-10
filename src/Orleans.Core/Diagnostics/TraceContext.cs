@@ -2,8 +2,11 @@ using System;
 
 namespace Orleans.Runtime
 {
-    internal class TraceContext
-    {
-        public Guid ActivityId { get; set; }
+internal class TraceContext
+{
+    public Guid ActivityId {
+        get;
+        set;
     }
+}
 }

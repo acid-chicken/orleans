@@ -4,156 +4,156 @@ using System.Threading.Tasks;
 
 namespace Orleans.Runtime.Messaging
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix")]
-    internal sealed class OutboundMessageQueue : IDisposable
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix")]
+internal sealed class OutboundMessageQueue : IDisposable
+{
+    private readonly MessageCenter messageCenter;
+    private readonly ConnectionManager connectionManager;
+    private readonly ISiloStatusOracle siloStatusOracle;
+    private readonly MessagingTrace messagingTrace;
+    private readonly ILogger logger;
+    private bool stopped;
+
+    public int GetCount()
     {
-        private readonly MessageCenter messageCenter;
-        private readonly ConnectionManager connectionManager;
-        private readonly ISiloStatusOracle siloStatusOracle;
-        private readonly MessagingTrace messagingTrace;
-        private readonly ILogger logger;
-        private bool stopped;
+        int n = GetApplicationMessageCount();
+        return n; // TODO
+    }
 
-        public int GetCount()
+    public int GetApplicationMessageCount()
+    {
+        return 0; // TODO
+    }
+
+    internal const string QUEUED_TIME_METADATA = "QueuedTime";
+
+    internal OutboundMessageQueue(
+        MessageCenter mc,
+        ILogger<OutboundMessageQueue> logger,
+        ConnectionManager senderManager,
+        ISiloStatusOracle siloStatusOracle,
+        MessagingTrace messagingTrace)
+    {
+        messageCenter = mc;
+        this.connectionManager = senderManager;
+        this.siloStatusOracle = siloStatusOracle;
+        this.messagingTrace = messagingTrace;
+        this.logger = logger;
+        stopped = false;
+    }
+
+    public void SendMessage(Message msg)
+    {
+        if (msg == null) throw new ArgumentNullException("msg", "Can't send a null message.");
+
+        if (stopped)
         {
-            int n = GetApplicationMessageCount();
-            return n; // TODO
+            logger.Info(ErrorCode.Runtime_Error_100112, "Message was queued for sending after outbound queue was stopped: {0}", msg);
+            return;
         }
 
-        public int GetApplicationMessageCount()
+        // Don't process messages that have already timed out
+        if (msg.IsExpired)
         {
-            return 0; // TODO
+            this.messagingTrace.OnDropExpiredMessage(msg, MessagingStatisticsGroup.Phase.Send);
+            return;
         }
 
-        internal const string QUEUED_TIME_METADATA = "QueuedTime";
-
-        internal OutboundMessageQueue(
-            MessageCenter mc,
-            ILogger<OutboundMessageQueue> logger,
-            ConnectionManager senderManager,
-            ISiloStatusOracle siloStatusOracle,
-            MessagingTrace messagingTrace)
+        if (!msg.QueuedTime.HasValue)
         {
-            messageCenter = mc;
-            this.connectionManager = senderManager;
-            this.siloStatusOracle = siloStatusOracle;
-            this.messagingTrace = messagingTrace;
-            this.logger = logger;
-            stopped = false;
+            msg.QueuedTime = DateTime.UtcNow;
         }
 
-        public void SendMessage(Message msg)
+        // First check to see if it's really destined for a proxied client, instead of a local grain.
+        if (messageCenter.IsProxying && messageCenter.TryDeliverToProxy(msg))
         {
-            if (msg == null) throw new ArgumentNullException("msg", "Can't send a null message.");
+            return;
+        }
 
+        if (msg.TargetSilo == null)
+        {
+            logger.Error(ErrorCode.Runtime_Error_100113, "Message does not have a target silo: " + msg + " -- Call stack is: " + Utils.GetStackTrace());
+            messageCenter.SendRejection(msg, Message.RejectionTypes.Unrecoverable, "Message to be sent does not have a target silo");
+            return;
+        }
+
+        messagingTrace.OnSendMessage(msg);
+        if (!messageCenter.TrySendLocal(msg))
+        {
             if (stopped)
             {
-                logger.Info(ErrorCode.Runtime_Error_100112, "Message was queued for sending after outbound queue was stopped: {0}", msg);
+                logger.Info(ErrorCode.Runtime_Error_100115, "Message was queued for sending after outbound queue was stopped: {0}", msg);
                 return;
             }
 
-            // Don't process messages that have already timed out
-            if (msg.IsExpired)
+            // check for simulation of lost messages
+            if (messageCenter.ShouldDrop?.Invoke(msg) == true)
             {
-                this.messagingTrace.OnDropExpiredMessage(msg, MessagingStatisticsGroup.Phase.Send);
+                logger.Info(ErrorCode.Messaging_SimulatedMessageLoss, "Message blocked by test");
+                messageCenter.SendRejection(msg, Message.RejectionTypes.Unrecoverable, "Message blocked by test");
                 return;
             }
 
-            if (!msg.QueuedTime.HasValue)
+            if (this.siloStatusOracle.IsDeadSilo(msg.TargetSilo))
             {
-                msg.QueuedTime = DateTime.UtcNow;
-            }
+                MessagingStatisticsGroup.OnFailedSentMessage(msg);
+                var reason = $"Target {msg.TargetSilo.ToLongString()} silo is known to be dead";
 
-            // First check to see if it's really destined for a proxied client, instead of a local grain.
-            if (messageCenter.IsProxying && messageCenter.TryDeliverToProxy(msg))
-            {
-                return;
-            }
-
-            if (msg.TargetSilo == null)
-            {
-                logger.Error(ErrorCode.Runtime_Error_100113, "Message does not have a target silo: " + msg + " -- Call stack is: " + Utils.GetStackTrace());
-                messageCenter.SendRejection(msg, Message.RejectionTypes.Unrecoverable, "Message to be sent does not have a target silo");
-                return;
-            }
-
-            messagingTrace.OnSendMessage(msg);
-            if (!messageCenter.TrySendLocal(msg))
-            {
-                if (stopped)
+                if (logger.IsEnabled(LogLevel.Debug))
                 {
-                    logger.Info(ErrorCode.Runtime_Error_100115, "Message was queued for sending after outbound queue was stopped: {0}", msg);
-                    return;
+                    logger.LogDebug(
+                        (int)ErrorCode.MessagingSendingRejection,
+                        "Silo {siloAddress} is rejecting message: {message}. Reason = {reason}",
+                        messageCenter.MyAddress,
+                        msg,
+                        reason);
                 }
 
-                // check for simulation of lost messages
-                if (messageCenter.ShouldDrop?.Invoke(msg) == true)
-                {
-                    logger.Info(ErrorCode.Messaging_SimulatedMessageLoss, "Message blocked by test");
-                    messageCenter.SendRejection(msg, Message.RejectionTypes.Unrecoverable, "Message blocked by test");
-                    return;
-                }
+                this.messageCenter.SendRejection(msg, Message.RejectionTypes.Transient, reason);
+                return;
+            }
 
-                if (this.siloStatusOracle.IsDeadSilo(msg.TargetSilo))
-                {
-                    MessagingStatisticsGroup.OnFailedSentMessage(msg);
-                    var reason = $"Target {msg.TargetSilo.ToLongString()} silo is known to be dead";
+            var senderTask = this.connectionManager.GetConnection(msg.TargetSilo);
+            if (senderTask.IsCompletedSuccessfully)
+            {
+                var sender = senderTask.Result;
+                sender.Send(msg);
+            }
+            else
+            {
+                _ = SendAsync(senderTask, msg);
 
-                    if (logger.IsEnabled(LogLevel.Debug))
+                async Task SendAsync(ValueTask<Connection> c, Message m)
+                {
+                    try
                     {
-                        logger.LogDebug(
-                          (int)ErrorCode.MessagingSendingRejection,
-                          "Silo {siloAddress} is rejecting message: {message}. Reason = {reason}",
-                          messageCenter.MyAddress,
-                          msg,
-                          reason);
+                        var sender = await c;
+                        sender.Send(m);
                     }
-
-                    this.messageCenter.SendRejection(msg, Message.RejectionTypes.Transient, reason);
-                    return;
-                }
-
-                var senderTask = this.connectionManager.GetConnection(msg.TargetSilo);
-                if (senderTask.IsCompletedSuccessfully)
-                {
-                    var sender = senderTask.Result;
-                    sender.Send(msg);
-                }
-                else
-                {
-                    _ = SendAsync(senderTask, msg);
-
-                    async Task SendAsync(ValueTask<Connection> c, Message m)
+                    catch (Exception exception)
                     {
-                        try
-                        {
-                            var sender = await c;
-                            sender.Send(m);
-                        }
-                        catch (Exception exception)
-                        {
-                            this.messageCenter.SendRejection(m, Message.RejectionTypes.Transient, $"Exception while sending message: {exception}");
-                        }
+                        this.messageCenter.SendRejection(m, Message.RejectionTypes.Transient, $"Exception while sending message: {exception}");
                     }
                 }
             }
-        }
-
-        public void Start()
-        {
-            stopped = false;
-        }
-
-        public void Stop()
-        {
-            stopped = true;
-        }
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1816:CallGCSuppressFinalizeCorrectly")]
-        public void Dispose()
-        {
-            stopped = true;
-            GC.SuppressFinalize(this);
         }
     }
+
+    public void Start()
+    {
+        stopped = false;
+    }
+
+    public void Stop()
+    {
+        stopped = true;
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1816:CallGCSuppressFinalizeCorrectly")]
+    public void Dispose()
+    {
+        stopped = true;
+        GC.SuppressFinalize(this);
+    }
+}
 }
