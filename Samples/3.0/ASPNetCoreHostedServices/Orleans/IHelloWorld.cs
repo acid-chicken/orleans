@@ -1,7 +1,7 @@
 ﻿namespace ASPNetCoreHostedServices.Orleans
 {
-    public interface IHelloWorld
-    {
-        
-    }
+public interface IHelloWorld
+{
+
+}
 }

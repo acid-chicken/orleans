@@ -2,8 +2,8 @@ using System.Threading.Tasks;
 
 namespace AspNetCoreCohosting.Interfaces
 {
-    public interface IHelloWorld : Orleans.IGrainWithIntegerKey
-    {
-        Task<string> SayHello();
-    }
+public interface IHelloWorld : Orleans.IGrainWithIntegerKey
+{
+    Task<string> SayHello();
+}
 }

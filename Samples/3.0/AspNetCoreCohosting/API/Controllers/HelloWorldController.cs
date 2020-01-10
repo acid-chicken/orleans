@@ -5,20 +5,20 @@ using Orleans;
 
 namespace AspNetCoreCohosting.Controllers
 {
-    [ApiController]
-    [Route("api/hello")]
-    public class HelloWorldController : ControllerBase
+[ApiController]
+[Route("api/hello")]
+public class HelloWorldController : ControllerBase
+{
+    private readonly IGrainFactory _client;
+    private readonly IHelloWorld _grain;
+
+    public HelloWorldController(IGrainFactory client)
     {
-        private readonly IGrainFactory _client;
-        private readonly IHelloWorld _grain;
-
-        public HelloWorldController(IGrainFactory client)
-        {
-            _client = client;
-            _grain = _client.GetGrain<IHelloWorld>(0);
-        }
-
-        [HttpGet]
-        public Task<string> SayHello() => this._grain.SayHello();
+        _client = client;
+        _grain = _client.GetGrain<IHelloWorld>(0);
     }
+
+    [HttpGet]
+    public Task<string> SayHello() => this._grain.SayHello();
+}
 }

@@ -2,12 +2,12 @@
 
 namespace ASPNetCoreHostedServices.Controllers
 {
-    public class HelloWorldController : Controller
+public class HelloWorldController : Controller
+{
+    // GET
+    public IActionResult Index()
     {
-        // GET
-        public IActionResult Index()
-        {
-            return View();
-        }
+        return View();
     }
+}
 }
