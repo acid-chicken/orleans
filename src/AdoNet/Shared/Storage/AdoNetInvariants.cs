@@ -10,27 +10,22 @@ namespace Orleans.Reminders.AdoNet.Storage
 #elif TESTER_SQLUTILS
 namespace Orleans.Tests.SqlUtils
 #else
-// No default namespace intentionally to cause compile errors if something is not defined
+// No default namespace intentionally to cause compile errors if something is
+// not defined
 #endif
 {
-/// <summary>
-/// A holder for well known, vendor specific connector class invariant names.
-/// </summary>
-internal static class AdoNetInvariants
-{
+  /// <summary>
+  /// A holder for well known, vendor specific connector class invariant names.
+  /// </summary>
+  internal static class AdoNetInvariants {
     /// <summary>
     /// A list of the supported invariants.
     /// </summary>
-    public static ICollection<string> Invariants {
-        get;
-    } = new Collection<string>(new List<string>(new[]
-    {
-        InvariantNameMySql,
-        InvariantNameOracleDatabase,
-        InvariantNamePostgreSql,
-        InvariantNameSqlLite,
-        InvariantNameSqlServer
-    }));
+    public static ICollection<string>Invariants { get; }
+    = new Collection<string>(
+        new List<string>(new[]{InvariantNameMySql, InvariantNameOracleDatabase,
+                               InvariantNamePostgreSql, InvariantNameSqlLite,
+                               InvariantNameSqlServer}));
 
     /// <summary>
     /// Microsoft SQL Server invariant name string.
@@ -40,7 +35,8 @@ internal static class AdoNetInvariants
     /// <summary>
     /// Oracle Database server invariant name string.
     /// </summary>
-    public const string InvariantNameOracleDatabase = "Oracle.DataAccess.Client";
+    public const string InvariantNameOracleDatabase =
+        "Oracle.DataAccess.Client";
 
     /// <summary>
     /// SQLite invariant name string.
@@ -60,6 +56,7 @@ internal static class AdoNetInvariants
     /// <summary>
     /// Dotnet core Microsoft SQL Server invariant name string.
     /// </summary>
-    public const string InvariantNameSqlServerDotnetCore = "Microsoft.Data.SqlClient";
-}
+    public const string InvariantNameSqlServerDotnetCore =
+        "Microsoft.Data.SqlClient";
+  }
 }
