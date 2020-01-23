@@ -1,15 +1,14 @@
 ﻿using Microsoft.Extensions.Hosting;
 
-namespace Orleans.TestingHost
-{
+namespace Orleans.TestingHost {
+  /// <summary>
+  /// Allows implementations to configure the host builder when starting up each
+  /// silo in the test cluster.
+  /// </summary>
+  public interface IHostConfigurator {
     /// <summary>
-    /// Allows implementations to configure the host builder when starting up each silo in the test cluster.
+    /// Configures the host builder.
     /// </summary>
-    public interface IHostConfigurator
-    {
-        /// <summary>
-        /// Configures the host builder.
-        /// </summary>
-        void Configure(IHostBuilder hostBuilder);
-    }
+    void Configure(IHostBuilder hostBuilder);
+  }
 }
