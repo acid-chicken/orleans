@@ -12,52 +12,52 @@ using Xunit.Abstractions;
 
 namespace Tester.AdoNet.Persistence
 {
-    [TestCategory("Persistence"), TestCategory("SqlServer")]
-    public class PersistenceGrainTests_Sql : GrainPersistenceTestsRunner, IClassFixture<PersistenceGrainTests_Sql.Fixture>
+[TestCategory("Persistence"), TestCategory("SqlServer")]
+public class PersistenceGrainTests_Sql : GrainPersistenceTestsRunner, IClassFixture<PersistenceGrainTests_Sql.Fixture>
+{
+    public const string TestDatabaseName = "OrleansTest";
+    public static string AdoInvariant = AdoNetInvariants.InvariantNameSqlServer;
+    public static Guid ServiceId = Guid.NewGuid();
+    public static string ConnectionStringKey = "AdoNetConnectionString";
+    public class Fixture : BaseTestClusterFixture
     {
-        public const string TestDatabaseName = "OrleansTest";
-        public static string AdoInvariant = AdoNetInvariants.InvariantNameSqlServer;
-        public static Guid ServiceId = Guid.NewGuid();
-        public static string ConnectionStringKey = "AdoNetConnectionString";
-        public class Fixture : BaseTestClusterFixture
+        protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
-            protected override void ConfigureTestCluster(TestClusterBuilder builder)
+            builder.Options.InitialSilosCount = 4;
+            builder.Options.UseTestClusterMembership = false;
+            var relationalStorage = RelationalStorageForTesting.SetupInstance(AdoInvariant, TestDatabaseName).Result;
+            builder.ConfigureHostConfiguration(configBuilder => configBuilder.AddInMemoryCollection(
+                                                   new Dictionary<string, string>
             {
-                builder.Options.InitialSilosCount = 4;
-                builder.Options.UseTestClusterMembership = false;
-                var relationalStorage = RelationalStorageForTesting.SetupInstance(AdoInvariant, TestDatabaseName).Result;
-                builder.ConfigureHostConfiguration(configBuilder => configBuilder.AddInMemoryCollection(
-                    new Dictionary<string, string>
-                    {
-                        {ConnectionStringKey, relationalStorage.CurrentConnectionString}
-                    }));
-                builder.Options.ServiceId = ServiceId.ToString();
-                builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
-                builder.AddClientBuilderConfigurator<GatewayConnectionTests.ClientBuilderConfigurator>();
-            }
-
-            private class MySiloBuilderConfigurator : ISiloConfigurator
-            {
-                public void Configure(ISiloBuilder hostBuilder)
-                {
-                    var connectionString = hostBuilder.GetConfiguration()[ConnectionStringKey];
-                    hostBuilder
-                        .AddAdoNetGrainStorage("GrainStorageForTest", options =>
-                        {
-                            options.ConnectionString = (string)connectionString;
-                            options.Invariant = AdoInvariant;
-                        })
-                        .AddMemoryGrainStorage("MemoryStore");
-                }
-            }
+                {ConnectionStringKey, relationalStorage.CurrentConnectionString}
+            }));
+            builder.Options.ServiceId = ServiceId.ToString();
+            builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
+            builder.AddClientBuilderConfigurator<GatewayConnectionTests.ClientBuilderConfigurator>();
         }
 
-        private Fixture fixture;
-
-        public PersistenceGrainTests_Sql(ITestOutputHelper output, Fixture fixture) : base(output, fixture)
+        private class MySiloBuilderConfigurator : ISiloConfigurator
         {
-            this.fixture = fixture;
-            this.fixture.EnsurePreconditionsMet();
+            public void Configure(ISiloBuilder hostBuilder)
+            {
+                var connectionString = hostBuilder.GetConfiguration()[ConnectionStringKey];
+                hostBuilder
+                .AddAdoNetGrainStorage("GrainStorageForTest", options =>
+                {
+                    options.ConnectionString = (string)connectionString;
+                    options.Invariant = AdoInvariant;
+                })
+                .AddMemoryGrainStorage("MemoryStore");
+            }
         }
     }
+
+    private Fixture fixture;
+
+    public PersistenceGrainTests_Sql(ITestOutputHelper output, Fixture fixture) : base(output, fixture)
+    {
+        this.fixture = fixture;
+        this.fixture.EnsurePreconditionsMet();
+    }
+}
 }

@@ -14,55 +14,55 @@ using Orleans.Configuration.Internal;
 
 namespace UnitTests
 {
-    public class AgentTests : OrleansTestingBase, IClassFixture<AgentTests.Fixture>
+public class AgentTests : OrleansTestingBase, IClassFixture<AgentTests.Fixture>
+{
+    private static readonly TimeSpan timeout = TimeSpan.FromSeconds(5);
+    private readonly Fixture fixture;
+
+    public AgentTests(Fixture fixture)
     {
-        private static readonly TimeSpan timeout = TimeSpan.FromSeconds(5);
-        private readonly Fixture fixture;
+        this.fixture = fixture;
+    }
 
-        public AgentTests(Fixture fixture)
+    public class Fixture : BaseTestClusterFixture
+    {
+        protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
-            this.fixture = fixture;
+            builder.AddSiloBuilderConfigurator<Configurator>();
         }
 
-        public class Fixture : BaseTestClusterFixture
+        private class Configurator : ISiloConfigurator
         {
-            protected override void ConfigureTestCluster(TestClusterBuilder builder)
+            public void Configure(ISiloBuilder hostBuilder)
             {
-                builder.AddSiloBuilderConfigurator<Configurator>();
-            }
-
-            private class Configurator : ISiloConfigurator
-            {
-                public void Configure(ISiloBuilder hostBuilder)
+                hostBuilder.ConfigureServices(services =>
                 {
-                    hostBuilder.ConfigureServices(services =>
-                    {
-                        services.TryAddSingleton<TestDedicatedAsynchAgent>();
-                        services.AddFromExisting<ILifecycleParticipant<ISiloLifecycle>, TestDedicatedAsynchAgent>();
-                    });
-                }
-            }
-        }
-
-        [Fact, TestCategory("BVT")]
-        public async Task DedicatedAsynchAgentRestartsTest()
-        {
-            IAgentTestGrain grain = this.fixture.GrainFactory.GetGrain<IAgentTestGrain>(GetRandomGrainId());
-            await TestingUtils.WaitUntilAsync(lastTry => CheckForFailures(grain, lastTry), timeout);
-        }
-
-        private async Task<bool> CheckForFailures(IAgentTestGrain grain, bool assertIsTrue)
-        {
-            int result = await grain.GetFailureCount();
-            if (assertIsTrue)
-            {
-                Assert.True(result > 1);
-                return true;
-            }
-            else
-            {
-                return result > 1;
+                    services.TryAddSingleton<TestDedicatedAsynchAgent>();
+                    services.AddFromExisting<ILifecycleParticipant<ISiloLifecycle>, TestDedicatedAsynchAgent>();
+                });
             }
         }
     }
+
+    [Fact, TestCategory("BVT")]
+    public async Task DedicatedAsynchAgentRestartsTest()
+    {
+        IAgentTestGrain grain = this.fixture.GrainFactory.GetGrain<IAgentTestGrain>(GetRandomGrainId());
+        await TestingUtils.WaitUntilAsync(lastTry => CheckForFailures(grain, lastTry), timeout);
+    }
+
+    private async Task<bool> CheckForFailures(IAgentTestGrain grain, bool assertIsTrue)
+    {
+        int result = await grain.GetFailureCount();
+        if (assertIsTrue)
+        {
+            Assert.True(result > 1);
+            return true;
+        }
+        else
+        {
+            return result > 1;
+        }
+    }
+}
 }

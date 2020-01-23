@@ -6,32 +6,32 @@ using TestExtensions;
 
 namespace Orleans.Transactions.Tests
 {
-    public class MemoryTransactionsFixture : BaseTestClusterFixture
+public class MemoryTransactionsFixture : BaseTestClusterFixture
+{
+    protected override void ConfigureTestCluster(TestClusterBuilder builder)
     {
-        protected override void ConfigureTestCluster(TestClusterBuilder builder)
-        {
-            builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
-        }
-
-        public class SiloBuilderConfigurator : ISiloConfigurator
-        {
-            public void Configure(ISiloBuilder hostBuilder)
-            {
-                hostBuilder
-                    .ConfigureServices(services => services.AddSingletonNamedService<IRemoteCommitService, RemoteCommitService>(TransactionTestConstants.RemoteCommitService))
-                    .ConfigureTracingForTransactionTests()
-                    .AddMemoryGrainStorage(TransactionTestConstants.TransactionStore)
-                    .UseTransactions();
-            }
-        }
+        builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
     }
 
-    public class SkewedClockMemoryTransactionsFixture : MemoryTransactionsFixture
+    public class SiloBuilderConfigurator : ISiloConfigurator
     {
-        protected override void ConfigureTestCluster(TestClusterBuilder builder)
+        public void Configure(ISiloBuilder hostBuilder)
         {
-            builder.AddSiloBuilderConfigurator<SkewedClockConfigurator>();
-            base.ConfigureTestCluster(builder);
+            hostBuilder
+            .ConfigureServices(services => services.AddSingletonNamedService<IRemoteCommitService, RemoteCommitService>(TransactionTestConstants.RemoteCommitService))
+            .ConfigureTracingForTransactionTests()
+            .AddMemoryGrainStorage(TransactionTestConstants.TransactionStore)
+            .UseTransactions();
         }
     }
+}
+
+public class SkewedClockMemoryTransactionsFixture : MemoryTransactionsFixture
+{
+    protected override void ConfigureTestCluster(TestClusterBuilder builder)
+    {
+        builder.AddSiloBuilderConfigurator<SkewedClockConfigurator>();
+        base.ConfigureTestCluster(builder);
+    }
+}
 }

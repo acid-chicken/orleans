@@ -11,69 +11,69 @@ using UnitTests.StreamingTests;
 
 namespace Tester.StreamingTests
 {
-    public class StreamFilteringTests_SMS : StreamFilteringTestsBase, IClassFixture<StreamFilteringTests_SMS.Fixture>
+public class StreamFilteringTests_SMS : StreamFilteringTestsBase, IClassFixture<StreamFilteringTests_SMS.Fixture>
+{
+    public class Fixture : BaseTestClusterFixture
     {
-        public class Fixture : BaseTestClusterFixture
+        public const string StreamProvider = StreamTestsConstants.SMS_STREAM_PROVIDER_NAME;
+        protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
-            public const string StreamProvider = StreamTestsConstants.SMS_STREAM_PROVIDER_NAME;
-            protected override void ConfigureTestCluster(TestClusterBuilder builder)
-            {
-                builder.AddClientBuilderConfigurator<ClientConfiguretor>();
-                builder.AddSiloBuilderConfigurator<SiloConfigurator>();
-            }
+            builder.AddClientBuilderConfigurator<ClientConfiguretor>();
+            builder.AddSiloBuilderConfigurator<SiloConfigurator>();
+        }
 
-            public class SiloConfigurator : ISiloConfigurator
+        public class SiloConfigurator : ISiloConfigurator
+        {
+            public void Configure(ISiloBuilder hostBuilder)
             {
-                public void Configure(ISiloBuilder hostBuilder)
-                {
-                    hostBuilder.AddSimpleMessageStreamProvider(StreamProvider)
-                        .AddMemoryGrainStorage("MemoryStore")
-                        .AddMemoryGrainStorage("PubSubStore");
-                }
-            }
-            public class ClientConfiguretor : IClientBuilderConfigurator
-            {
-                public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
-                {
-                    clientBuilder.AddSimpleMessageStreamProvider(StreamProvider);
-                }
+                hostBuilder.AddSimpleMessageStreamProvider(StreamProvider)
+                .AddMemoryGrainStorage("MemoryStore")
+                .AddMemoryGrainStorage("PubSubStore");
             }
         }
-
-        public StreamFilteringTests_SMS(Fixture fixture) : base(fixture)
+        public class ClientConfiguretor : IClientBuilderConfigurator
         {
-            streamProviderName = Fixture.StreamProvider;
-        }
-
-        [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
-        public async Task SMS_Filter_Basic()
-        {
-            await Test_Filter_EvenOdd(true);
-        }
-
-        [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
-        public async Task SMS_Filter_EvenOdd()
-        {
-            await Test_Filter_EvenOdd();
-        }
-
-        [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
-        public async Task SMS_Filter_BadFunc()
-        {
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                 Test_Filter_BadFunc());
-        }
-
-        [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
-        public async Task SMS_Filter_TwoObsv_Different()
-        {
-            await Test_Filter_TwoObsv_Different();
-        }
-
-        [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
-        public async Task SMS_Filter_TwoObsv_Same()
-        {
-            await Test_Filter_TwoObsv_Same();
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+            {
+                clientBuilder.AddSimpleMessageStreamProvider(StreamProvider);
+            }
         }
     }
+
+    public StreamFilteringTests_SMS(Fixture fixture) : base(fixture)
+    {
+        streamProviderName = Fixture.StreamProvider;
+    }
+
+    [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
+    public async Task SMS_Filter_Basic()
+    {
+        await Test_Filter_EvenOdd(true);
+    }
+
+    [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
+    public async Task SMS_Filter_EvenOdd()
+    {
+        await Test_Filter_EvenOdd();
+    }
+
+    [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
+    public async Task SMS_Filter_BadFunc()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+                Test_Filter_BadFunc());
+    }
+
+    [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
+    public async Task SMS_Filter_TwoObsv_Different()
+    {
+        await Test_Filter_TwoObsv_Different();
+    }
+
+    [Fact, TestCategory("BVT"), TestCategory("Streaming"), TestCategory("Filters")]
+    public async Task SMS_Filter_TwoObsv_Same()
+    {
+        await Test_Filter_TwoObsv_Same();
+    }
+}
 }

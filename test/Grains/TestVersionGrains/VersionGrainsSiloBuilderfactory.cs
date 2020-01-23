@@ -12,37 +12,37 @@ using Microsoft.Extensions.Configuration;
 
 namespace TestVersionGrains
 {
-    public class VersionGrainsSiloBuilderConfigurator : ISiloConfigurator
+public class VersionGrainsSiloBuilderConfigurator : ISiloConfigurator
+{
+    public void Configure(ISiloBuilder hostBuilder)
     {
-        public void Configure(ISiloBuilder hostBuilder)
+        var cfg = hostBuilder.GetConfiguration();
+        var siloCount = int.Parse(cfg["SiloCount"]);
+        var refreshInterval = TimeSpan.Parse(cfg["RefreshInterval"]);
+        hostBuilder.Configure<SiloMessagingOptions>(options => options.AssumeHomogenousSilosForTesting = false);
+        hostBuilder.Configure<TypeManagementOptions>(options => options.TypeMapRefreshInterval = refreshInterval);
+        hostBuilder.Configure<GrainVersioningOptions>(options =>
         {
-            var cfg = hostBuilder.GetConfiguration();
-            var siloCount = int.Parse(cfg["SiloCount"]);
-            var refreshInterval = TimeSpan.Parse(cfg["RefreshInterval"]);
-            hostBuilder.Configure<SiloMessagingOptions>(options => options.AssumeHomogenousSilosForTesting = false);
-            hostBuilder.Configure<TypeManagementOptions>(options => options.TypeMapRefreshInterval = refreshInterval);
-            hostBuilder.Configure<GrainVersioningOptions>(options =>
-            {
-                options.DefaultCompatibilityStrategy = cfg["CompatibilityStrategy"];
-                options.DefaultVersionSelectorStrategy = cfg["VersionSelectorStrategy"];
-            });
+            options.DefaultCompatibilityStrategy = cfg["CompatibilityStrategy"];
+            options.DefaultVersionSelectorStrategy = cfg["VersionSelectorStrategy"];
+        });
 
-            hostBuilder.ConfigureServices(this.ConfigureServices)
-                 .AddMemoryGrainStorageAsDefault();
-        }
-
-        private void ConfigureServices(IServiceCollection services)
-        {
-            services.AddSingletonNamedService<PlacementStrategy, VersionAwarePlacementStrategy>(nameof(VersionAwarePlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, VersionAwarePlacementDirector>(typeof(VersionAwarePlacementStrategy));
-        }
+        hostBuilder.ConfigureServices(this.ConfigureServices)
+        .AddMemoryGrainStorageAsDefault();
     }
 
-    public class VersionGrainsClientConfigurator : IClientBuilderConfigurator
+    private void ConfigureServices(IServiceCollection services)
     {
-        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
-        {
-            clientBuilder.Configure<GatewayOptions>(options => options.PreferedGatewayIndex = 0);
-        }
+        services.AddSingletonNamedService<PlacementStrategy, VersionAwarePlacementStrategy>(nameof(VersionAwarePlacementStrategy));
+        services.AddSingletonKeyedService<Type, IPlacementDirector, VersionAwarePlacementDirector>(typeof(VersionAwarePlacementStrategy));
     }
+}
+
+public class VersionGrainsClientConfigurator : IClientBuilderConfigurator
+{
+    public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+    {
+        clientBuilder.Configure<GatewayOptions>(options => options.PreferedGatewayIndex = 0);
+    }
+}
 }

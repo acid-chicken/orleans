@@ -13,71 +13,71 @@ using Xunit;
 
 namespace UnitTests.StreamingTests
 {
-    public class ControllableStreamProviderTests : OrleansTestingBase, IClassFixture<ControllableStreamProviderTests.Fixture>
+public class ControllableStreamProviderTests : OrleansTestingBase, IClassFixture<ControllableStreamProviderTests.Fixture>
+{
+    public class Fixture : BaseTestClusterFixture
     {
-        public class Fixture : BaseTestClusterFixture
+        public const string StreamProviderName = "ControllableTestStreamProvider";
+        public readonly string StreamProviderTypeName = typeof(PersistentStreamProvider).FullName;
+
+        protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
-            public const string StreamProviderName = "ControllableTestStreamProvider";
-            public readonly string StreamProviderTypeName = typeof(PersistentStreamProvider).FullName;
+            builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
+        }
 
-            protected override void ConfigureTestCluster(TestClusterBuilder builder)
+        private class MySiloBuilderConfigurator : ISiloConfigurator
+        {
+            public void Configure(ISiloBuilder hostBuilder)
             {
-                builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
-            }
-
-            private class MySiloBuilderConfigurator : ISiloConfigurator
-            {
-                public void Configure(ISiloBuilder hostBuilder)
+                hostBuilder
+                .AddPersistentStreams(
+                    StreamProviderName,
+                    ControllableTestAdapterFactory.Create,
+                    b=>
                 {
-                    hostBuilder
-                        .AddPersistentStreams(
-                            StreamProviderName,
-                            ControllableTestAdapterFactory.Create,
-                            b=>
-                            {
-                                b.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
-                                b.UseDynamicClusterConfigDeploymentBalancer();
-                            });
-                }
-            }
-        }
-
-        private readonly Fixture fixture;
-
-        public ControllableStreamProviderTests(Fixture fixture)
-        {
-            this.fixture = fixture;
-        }        
-
-        [Fact, TestCategory("Functional"), TestCategory("Streaming")]
-        public async Task ControllableAdapterEchoTest()
-        {
-            this.fixture.Logger.Info("************************ ControllableAdapterEchoTest *********************************");
-            const string echoArg = "blarg";
-            await this.ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands.AdapterEcho, echoArg);
-        }
-
-        [Fact, TestCategory("Functional"), TestCategory("Streaming")]
-        public async Task ControllableAdapterFactoryEchoTest()
-        {
-            this.fixture.Logger.Info("************************ ControllableAdapterFactoryEchoTest *********************************");
-            const string echoArg = "blarg";
-            await this.ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands.AdapterFactoryEcho, echoArg);
-        }
-
-        private async Task ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands command, object echoArg)
-        {
-            this.fixture.Logger.Info("************************ ControllableAdapterEchoTest *********************************");
-            var mgmt = this.fixture.GrainFactory.GetGrain<IManagementGrain>(0);
-
-            object[] results = await mgmt.SendControlCommandToProvider(this.fixture.StreamProviderTypeName, Fixture.StreamProviderName, (int)command, echoArg);
-            Assert.Equal(2, results.Length);
-            Tuple<ControllableTestStreamProviderCommands, object>[] echos = results.Cast<Tuple<ControllableTestStreamProviderCommands, object>>().ToArray();
-            foreach (var echo in echos)
-            {
-                Assert.Equal(command, echo.Item1);
-                Assert.Equal(echoArg, echo.Item2);
+                    b.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
+                    b.UseDynamicClusterConfigDeploymentBalancer();
+                });
             }
         }
     }
+
+    private readonly Fixture fixture;
+
+    public ControllableStreamProviderTests(Fixture fixture)
+    {
+        this.fixture = fixture;
+    }
+
+    [Fact, TestCategory("Functional"), TestCategory("Streaming")]
+    public async Task ControllableAdapterEchoTest()
+    {
+        this.fixture.Logger.Info("************************ ControllableAdapterEchoTest *********************************");
+        const string echoArg = "blarg";
+        await this.ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands.AdapterEcho, echoArg);
+    }
+
+    [Fact, TestCategory("Functional"), TestCategory("Streaming")]
+    public async Task ControllableAdapterFactoryEchoTest()
+    {
+        this.fixture.Logger.Info("************************ ControllableAdapterFactoryEchoTest *********************************");
+        const string echoArg = "blarg";
+        await this.ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands.AdapterFactoryEcho, echoArg);
+    }
+
+    private async Task ControllableAdapterEchoTestRunner(ControllableTestStreamProviderCommands command, object echoArg)
+    {
+        this.fixture.Logger.Info("************************ ControllableAdapterEchoTest *********************************");
+        var mgmt = this.fixture.GrainFactory.GetGrain<IManagementGrain>(0);
+
+        object[] results = await mgmt.SendControlCommandToProvider(this.fixture.StreamProviderTypeName, Fixture.StreamProviderName, (int)command, echoArg);
+        Assert.Equal(2, results.Length);
+        Tuple<ControllableTestStreamProviderCommands, object>[] echos = results.Cast<Tuple<ControllableTestStreamProviderCommands, object>>().ToArray();
+        foreach (var echo in echos)
+        {
+            Assert.Equal(command, echo.Item1);
+            Assert.Equal(echoArg, echo.Item2);
+        }
+    }
+}
 }

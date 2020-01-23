@@ -11,44 +11,44 @@ using Xunit.Abstractions;
 
 namespace UnitTests.StreamingTests
 {
-    [TestCategory("BVT")]
-    public class SMSBatchingTests : StreamBatchingTestRunner, IClassFixture<SMSBatchingTests.Fixture>
+[TestCategory("BVT")]
+public class SMSBatchingTests : StreamBatchingTestRunner, IClassFixture<SMSBatchingTests.Fixture>
+{
+    public class Fixture : BaseTestClusterFixture
     {
-        public class Fixture : BaseTestClusterFixture
+        protected override void CheckPreconditionsOrThrow()
         {
-            protected override void CheckPreconditionsOrThrow()
-            {
-                base.CheckPreconditionsOrThrow();
-                throw new SkipException("Batching not working on SMS yet");
-            }
-
-            protected override void ConfigureTestCluster(TestClusterBuilder builder)
-            {
-                builder.AddClientBuilderConfigurator<ClientConfiguretor>();
-                builder.AddSiloBuilderConfigurator<SiloConfigurator>();
-            }
-            public class SiloConfigurator : ISiloConfigurator
-            {
-                public void Configure(ISiloBuilder hostBuilder)
-                {
-                    hostBuilder.AddSimpleMessageStreamProvider(StreamBatchingTestConst.ProviderName,
-                        options => options.PubSubType = StreamPubSubType.ImplicitOnly);
-                }
-            }
-            public class ClientConfiguretor : IClientBuilderConfigurator
-            {
-                public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
-                {
-                    clientBuilder.AddSimpleMessageStreamProvider(StreamBatchingTestConst.ProviderName,
-                        options => options.PubSubType = StreamPubSubType.ImplicitOnly);
-                }
-            }
+            base.CheckPreconditionsOrThrow();
+            throw new SkipException("Batching not working on SMS yet");
         }
 
-        public SMSBatchingTests(Fixture fixture, ITestOutputHelper output)
-            : base(fixture, output)
+        protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
-            fixture.EnsurePreconditionsMet();
+            builder.AddClientBuilderConfigurator<ClientConfiguretor>();
+            builder.AddSiloBuilderConfigurator<SiloConfigurator>();
+        }
+        public class SiloConfigurator : ISiloConfigurator
+        {
+            public void Configure(ISiloBuilder hostBuilder)
+            {
+                hostBuilder.AddSimpleMessageStreamProvider(StreamBatchingTestConst.ProviderName,
+                        options => options.PubSubType = StreamPubSubType.ImplicitOnly);
+            }
+        }
+        public class ClientConfiguretor : IClientBuilderConfigurator
+        {
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+            {
+                clientBuilder.AddSimpleMessageStreamProvider(StreamBatchingTestConst.ProviderName,
+                        options => options.PubSubType = StreamPubSubType.ImplicitOnly);
+            }
         }
     }
+
+    public SMSBatchingTests(Fixture fixture, ITestOutputHelper output)
+        : base(fixture, output)
+    {
+        fixture.EnsurePreconditionsMet();
+    }
+}
 }

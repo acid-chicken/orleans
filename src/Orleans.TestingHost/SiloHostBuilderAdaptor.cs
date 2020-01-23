@@ -11,87 +11,87 @@ using IHostingEnvironment = Orleans.Hosting.IHostingEnvironment;
 
 namespace Orleans.TestingHost
 {
-    internal class SiloHostBuilderAdaptor : ISiloHostBuilder
+internal class SiloHostBuilderAdaptor : ISiloHostBuilder
+{
+    private readonly IHostBuilder hostBuilder;
+    private readonly ISiloBuilder siloBuilder;
+
+    public SiloHostBuilderAdaptor(IHostBuilder hostBuilder, ISiloBuilder siloBuilder)
     {
-        private readonly IHostBuilder hostBuilder;
-        private readonly ISiloBuilder siloBuilder;
+        this.hostBuilder = hostBuilder;
+        this.siloBuilder = siloBuilder;
+    }
 
-        public SiloHostBuilderAdaptor(IHostBuilder hostBuilder, ISiloBuilder siloBuilder)
+    public IDictionary<object, object> Properties => this.hostBuilder.Properties;
+
+    public ISiloHost Build() => throw new NotSupportedException(
+        $"This implementation of {nameof(ISiloHostBuilder)} is designed for use with {nameof(TestClusterBuilder)} only and therefore this method is not supported");
+
+    public ISiloHostBuilder ConfigureAppConfiguration(Action<SiloHostBuilderContext, IConfigurationBuilder> configureDelegate)
+    {
+        this.hostBuilder.ConfigureAppConfiguration((ctx, containerBuilder) => configureDelegate(this.GetContext(ctx), containerBuilder));
+        return this;
+    }
+
+    public ISiloHostBuilder ConfigureContainer<TContainerBuilder>(Action<SiloHostBuilderContext, TContainerBuilder> configureDelegate)
+    {
+        this.hostBuilder.ConfigureContainer<TContainerBuilder>((ctx, containerBuilder) => configureDelegate(this.GetContext(ctx), containerBuilder));
+        return this;
+    }
+
+    public ISiloHostBuilder ConfigureHostConfiguration(Action<IConfigurationBuilder> configureDelegate)
+    {
+        this.hostBuilder.ConfigureHostConfiguration(configureDelegate);
+        return this;
+    }
+
+    public ISiloHostBuilder ConfigureServices(Action<SiloHostBuilderContext, IServiceCollection> configureDelegate)
+    {
+        this.siloBuilder.ConfigureServices((ctx, services) => configureDelegate(this.GetContext(ctx), services));
+        return this;
+    }
+
+    public ISiloHostBuilder UseServiceProviderFactory<TContainerBuilder>(IServiceProviderFactory<TContainerBuilder> factory)
+    {
+        this.hostBuilder.UseServiceProviderFactory(factory);
+        return this;
+    }
+
+    private SiloHostBuilderContext GetContext(HostBuilderContext context)
+    {
+        const string key = "SiloHostBuilderContext";
+        if (this.Properties.TryGetValue(key, out var result) && result is SiloHostBuilderContext resultContext)
         {
-            this.hostBuilder = hostBuilder;
-            this.siloBuilder = siloBuilder;
-        }
-
-        public IDictionary<object, object> Properties => this.hostBuilder.Properties;
-
-        public ISiloHost Build() => throw new NotSupportedException(
-            $"This implementation of {nameof(ISiloHostBuilder)} is designed for use with {nameof(TestClusterBuilder)} only and therefore this method is not supported");
-
-        public ISiloHostBuilder ConfigureAppConfiguration(Action<SiloHostBuilderContext, IConfigurationBuilder> configureDelegate)
-        {
-            this.hostBuilder.ConfigureAppConfiguration((ctx, containerBuilder) => configureDelegate(this.GetContext(ctx), containerBuilder));
-            return this;
-        }
-
-        public ISiloHostBuilder ConfigureContainer<TContainerBuilder>(Action<SiloHostBuilderContext, TContainerBuilder> configureDelegate)
-        {
-            this.hostBuilder.ConfigureContainer<TContainerBuilder>((ctx, containerBuilder) => configureDelegate(this.GetContext(ctx), containerBuilder));
-            return this;
-        }
-
-        public ISiloHostBuilder ConfigureHostConfiguration(Action<IConfigurationBuilder> configureDelegate)
-        {
-            this.hostBuilder.ConfigureHostConfiguration(configureDelegate);
-            return this;
-        }
-
-        public ISiloHostBuilder ConfigureServices(Action<SiloHostBuilderContext, IServiceCollection> configureDelegate)
-        {
-            this.siloBuilder.ConfigureServices((ctx, services) => configureDelegate(this.GetContext(ctx), services));
-            return this;
-        }
-
-        public ISiloHostBuilder UseServiceProviderFactory<TContainerBuilder>(IServiceProviderFactory<TContainerBuilder> factory)
-        {
-            this.hostBuilder.UseServiceProviderFactory(factory);
-            return this;
-        }
-
-        private SiloHostBuilderContext GetContext(HostBuilderContext context)
-        {
-            const string key = "SiloHostBuilderContext";
-            if (this.Properties.TryGetValue(key, out var result) && result is SiloHostBuilderContext resultContext)
-            {
-                return resultContext;
-            }
-
-            resultContext = new SiloHostBuilderContext(context.Properties)
-            {
-                Configuration = context.Configuration,
-                HostingEnvironment = new HostingEnvironmentWrapper(context.HostingEnvironment)
-            };
-
-            this.Properties[key] = resultContext;
             return resultContext;
         }
 
-        private class HostingEnvironmentWrapper : IHostingEnvironment
+        resultContext = new SiloHostBuilderContext(context.Properties)
         {
-            private readonly IHostEnvironment hostEnvironment;
+            Configuration = context.Configuration,
+            HostingEnvironment = new HostingEnvironmentWrapper(context.HostingEnvironment)
+        };
 
-            public HostingEnvironmentWrapper(IHostEnvironment hostEnvironment) => this.hostEnvironment = hostEnvironment;
+        this.Properties[key] = resultContext;
+        return resultContext;
+    }
 
-            public string EnvironmentName
-            {
-                get => this.hostEnvironment.EnvironmentName;
-                set => this.hostEnvironment.EnvironmentName = value;
-            }
+    private class HostingEnvironmentWrapper : IHostingEnvironment
+    {
+        private readonly IHostEnvironment hostEnvironment;
 
-            public string ApplicationName
-            {
-                get => this.hostEnvironment.ApplicationName;
-                set => this.hostEnvironment.ApplicationName = value;
-            }
+        public HostingEnvironmentWrapper(IHostEnvironment hostEnvironment) => this.hostEnvironment = hostEnvironment;
+
+        public string EnvironmentName
+        {
+            get => this.hostEnvironment.EnvironmentName;
+            set => this.hostEnvironment.EnvironmentName = value;
+        }
+
+        public string ApplicationName
+        {
+            get => this.hostEnvironment.ApplicationName;
+            set => this.hostEnvironment.ApplicationName = value;
         }
     }
+}
 }
