@@ -43,7 +43,7 @@
     TaskName="Orleans.CodeGenerator.MSBuild.Tasks.GetDotNetHost"
     AssemblyFile="$(Orleans_TaskAssembly)"
     Condition="'$(Orleans_CodeGeneratorEnabled)' == 'true' and '$(Orleans_DotNetHost)' == '' and '$(Orleans_MSBuildIsCore)' == 'true'" />
-  
+
   <!--
     Input to the code generator should not include its output.
   -->
@@ -90,7 +90,7 @@
 
     <Message Text="[Orleans.CodeGenerator] - CodeGen arguments=@(Orleans_CodeGenArgs -> '%(Identity)')" Importance="Low"/>
     <Message Text="[Orleans.CodeGenerator] - CodeGen arguments file=$(Orleans_ArgsFile)" Importance="Low"/>
-    
+
     <WriteLinesToFile
       Overwrite="true"
       File="$(Orleans_ArgsFile)"
@@ -111,7 +111,7 @@
       <FileWrites Include="$(Orleans_ArgsFile)" Condition="Exists('$(Orleans_ArgsFile)')" />
       <FileWrites Include="$(Orleans_CodeGenInputCache)"  Condition="Exists('$(Orleans_CodeGenInputCache)')" />
     </ItemGroup>
-    
+
   </Target>
 
   <Target Name="OrleansGenerateCode"
