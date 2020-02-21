@@ -6,13 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Runtime;
 
-namespace Orleans.Hosting
-{
-/// <summary>
-/// The silo builder startup extensions.
-/// </summary>
-public static class SiloBuilderStartupExtensions
-{
+namespace Orleans.Hosting {
+  /// <summary>
+  /// The silo builder startup extensions.
+  /// </summary>
+  public static class SiloBuilderStartupExtensions {
     /// <summary>
     /// Adds a startup task to be executed when the silo has started.
     /// </summary>
@@ -20,7 +18,8 @@ public static class SiloBuilderStartupExtensions
     /// The builder.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <typeparam name="TStartup">
     /// The startup task type.
@@ -30,10 +29,13 @@ public static class SiloBuilderStartupExtensions
     /// </returns>
     public static ISiloHostBuilder AddStartupTask<TStartup>(
         this ISiloHostBuilder builder,
-        int stage = ServiceLifecycleStage.Active)
-    where TStartup : class, IStartupTask
-    {
-        return builder.AddStartupTask((sp, ct) => ActivatorUtilities.GetServiceOrCreateInstance<TStartup>(sp).Execute(ct), stage);
+        int stage = ServiceLifecycleStage.Active) where TStartup : class
+    , IStartupTask {
+      return builder.AddStartupTask(
+          (sp, ct) =>
+              ActivatorUtilities.GetServiceOrCreateInstance<TStartup>(sp)
+                  .Execute(ct),
+          stage);
     }
 
     /// <summary>
@@ -46,17 +48,16 @@ public static class SiloBuilderStartupExtensions
     /// The startup task.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <returns>
     /// The provided <see cref="ISiloHostBuilder"/>.
     /// </returns>
-    public static ISiloHostBuilder AddStartupTask(
-        this ISiloHostBuilder builder,
-        IStartupTask startupTask,
-        int stage = ServiceLifecycleStage.Active)
-    {
-        return builder.AddStartupTask((sp, ct) => startupTask.Execute(ct), stage);
+    public static ISiloHostBuilder
+    AddStartupTask(this ISiloHostBuilder builder, IStartupTask startupTask,
+                   int stage = ServiceLifecycleStage.Active) {
+      return builder.AddStartupTask((sp, ct) => startupTask.Execute(ct), stage);
     }
 
     /// <summary>
@@ -69,23 +70,21 @@ public static class SiloBuilderStartupExtensions
     /// The startup task.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <returns>
     /// The provided <see cref="ISiloHostBuilder"/>.
     /// </returns>
-    public static ISiloHostBuilder AddStartupTask(
-        this ISiloHostBuilder builder,
-        Func<IServiceProvider, CancellationToken, Task> startupTask,
-        int stage = ServiceLifecycleStage.Active)
-    {
-        builder.ConfigureServices(services =>
-                                  services.AddTransient<ILifecycleParticipant<ISiloLifecycle>>(sp =>
-                                          new StartupTask(
-            sp,
-            startupTask,
-            stage)));
-        return builder;
+    public static ISiloHostBuilder
+    AddStartupTask(this ISiloHostBuilder builder,
+                   Func<IServiceProvider, CancellationToken, Task>startupTask,
+                   int stage = ServiceLifecycleStage.Active) {
+      builder.ConfigureServices(
+          services =>
+              services.AddTransient<ILifecycleParticipant<ISiloLifecycle>>(
+                  sp => new StartupTask(sp, startupTask, stage)));
+      return builder;
     }
 
     /// <summary>
@@ -95,7 +94,8 @@ public static class SiloBuilderStartupExtensions
     /// The builder.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <typeparam name="TStartup">
     /// The startup task type.
@@ -105,10 +105,13 @@ public static class SiloBuilderStartupExtensions
     /// </returns>
     public static ISiloBuilder AddStartupTask<TStartup>(
         this ISiloBuilder builder,
-        int stage = ServiceLifecycleStage.Active)
-    where TStartup : class, IStartupTask
-    {
-        return builder.AddStartupTask((sp, ct) => ActivatorUtilities.GetServiceOrCreateInstance<TStartup>(sp).Execute(ct), stage);
+        int stage = ServiceLifecycleStage.Active) where TStartup : class
+    , IStartupTask {
+      return builder.AddStartupTask(
+          (sp, ct) =>
+              ActivatorUtilities.GetServiceOrCreateInstance<TStartup>(sp)
+                  .Execute(ct),
+          stage);
     }
 
     /// <summary>
@@ -121,17 +124,16 @@ public static class SiloBuilderStartupExtensions
     /// The startup task.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <returns>
     /// The provided <see cref="ISiloBuilder"/>.
     /// </returns>
-    public static ISiloBuilder AddStartupTask(
-        this ISiloBuilder builder,
-        IStartupTask startupTask,
-        int stage = ServiceLifecycleStage.Active)
-    {
-        return builder.AddStartupTask((sp, ct) => startupTask.Execute(ct), stage);
+    public static ISiloBuilder
+    AddStartupTask(this ISiloBuilder builder, IStartupTask startupTask,
+                   int stage = ServiceLifecycleStage.Active) {
+      return builder.AddStartupTask((sp, ct) => startupTask.Execute(ct), stage);
     }
 
     /// <summary>
@@ -144,50 +146,46 @@ public static class SiloBuilderStartupExtensions
     /// The startup task.
     /// </param>
     /// <param name="stage">
-    /// The stage to execute the startup task, see values in <see cref="ServiceLifecycleStage"/>.
+    /// The stage to execute the startup task, see values in <see
+    /// cref="ServiceLifecycleStage"/>.
     /// </param>
     /// <returns>
     /// The provided <see cref="ISiloBuilder"/>.
     /// </returns>
-    public static ISiloBuilder AddStartupTask(
-        this ISiloBuilder builder,
-        Func<IServiceProvider, CancellationToken, Task> startupTask,
-        int stage = ServiceLifecycleStage.Active)
-    {
-        builder.ConfigureServices(services =>
-                                  services.AddTransient<ILifecycleParticipant<ISiloLifecycle>>(sp =>
-                                          new StartupTask(
-            sp,
-            startupTask,
-            stage)));
-        return builder;
+    public static ISiloBuilder
+    AddStartupTask(this ISiloBuilder builder,
+                   Func<IServiceProvider, CancellationToken, Task>startupTask,
+                   int stage = ServiceLifecycleStage.Active) {
+      builder.ConfigureServices(
+          services =>
+              services.AddTransient<ILifecycleParticipant<ISiloLifecycle>>(
+                  sp => new StartupTask(sp, startupTask, stage)));
+      return builder;
     }
 
     /// <inheritdoc />
-    private class StartupTask : ILifecycleParticipant<ISiloLifecycle>
-    {
-        private readonly IServiceProvider serviceProvider;
-        private readonly Func<IServiceProvider, CancellationToken, Task> startupTask;
+    private class StartupTask : ILifecycleParticipant<ISiloLifecycle> {
+      private readonly IServiceProvider serviceProvider;
+      private readonly Func<IServiceProvider, CancellationToken, Task>
+          startupTask;
 
-        private readonly int stage;
+      private readonly int stage;
 
-        public StartupTask(
-            IServiceProvider serviceProvider,
-            Func<IServiceProvider, CancellationToken, Task> startupTask,
-            int stage)
-        {
-            this.serviceProvider = serviceProvider;
-            this.startupTask = startupTask;
-            this.stage = stage;
-        }
+      public StartupTask(
+          IServiceProvider serviceProvider,
+          Func<IServiceProvider, CancellationToken, Task>startupTask,
+          int stage) {
+        this.serviceProvider = serviceProvider;
+        this.startupTask = startupTask;
+        this.stage = stage;
+      }
 
-        /// <inheritdoc />
-        public void Participate(ISiloLifecycle lifecycle)
-        {
-            lifecycle.Subscribe<StartupTask>(
-                this.stage,
-                cancellation => this.startupTask(this.serviceProvider, cancellation));
-        }
+      /// <inheritdoc />
+      public void Participate(ISiloLifecycle lifecycle) {
+        lifecycle.Subscribe<StartupTask>(
+            this.stage, cancellation => this.startupTask(this.serviceProvider,
+                                                         cancellation));
+      }
     }
-}
+  }
 }

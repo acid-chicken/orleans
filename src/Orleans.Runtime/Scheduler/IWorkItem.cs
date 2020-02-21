@@ -1,35 +1,26 @@
 using System;
 using System.Threading;
 
-namespace Orleans.Runtime.Scheduler
-{
-internal interface IWorkItem
+namespace Orleans.Runtime.Scheduler {
+  internal interface IWorkItem
 #if NETCOREAPP
-    : IThreadPoolWorkItem
+      : IThreadPoolWorkItem
 #endif
-{
-    string Name {
-        get;
-    }
-    WorkItemType ItemType {
-        get;
-    }
+  {
+    string Name { get; }
+    WorkItemType ItemType { get; }
     ISchedulingContext SchedulingContext {
-        get;
-        set;
+      get;
+      set;
     }
-    TimeSpan TimeSinceQueued {
-        get;
-    }
+    TimeSpan TimeSinceQueued { get; }
     DateTime TimeQueued {
-        get;
-        set;
+      get;
+      set;
     }
-    bool IsSystemPriority {
-        get;
-    }
+    bool IsSystemPriority { get; }
 #if !NETCOREAPP
     void Execute();
 #endif
-}
+  }
 }
