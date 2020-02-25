@@ -43,8 +43,8 @@
 --
 -- 7. In the storage operations queries the columns need to be in the exact same order
 -- since the storage table operations support optionally streaming.
-CREATE TABLE Storage
-(
+
+CREATE TABLE Storage (
     -- These are for the book keeping. Orleans calculates
     -- these hashes (see RelationalStorageProvide implementation),
     -- which are signed 32 bit integers mapped to the *Hash fields.
@@ -54,14 +54,14 @@ CREATE TABLE Storage
     -- If there are duplicates, they are resolved by using GrainIdN0,
     -- GrainIdN1, GrainIdExtensionString and GrainTypeString fields.
     -- It is assumed these would be rarely needed.
-    GrainIdHash                INT NOT NULL,
-    GrainIdN0                BIGINT NOT NULL,
-    GrainIdN1                BIGINT NOT NULL,
-    GrainTypeHash            INT NOT NULL,
-    GrainTypeString            NVARCHAR(512) NOT NULL,
-    GrainIdExtensionString    NVARCHAR(512) NULL,
-    ServiceId                NVARCHAR(150) NOT NULL,
 
+    GrainIdHash INT NOT NULL,
+    GrainIdN0 BIGINT NOT NULL,
+    GrainIdN1 BIGINT NOT NULL,
+    GrainTypeHash INT NOT NULL,
+    GrainTypeString NVARCHAR (512) NOT NULL,
+    GrainIdExtensionString NVARCHAR (512) NULL,
+    ServiceId NVARCHAR (150) NOT NULL,
     -- The usage of the Payload records is exclusive in that
     -- only one should be populated at any given time and two others
     -- are NULL. The types are separated to advantage on special
@@ -69,241 +69,261 @@ CREATE TABLE Storage
     -- have both JSON and XML types.
     --
     -- One is free to alter the size of these fields.
-    PayloadBinary    BLOB NULL,
-    PayloadXml        LONGTEXT NULL,
-    PayloadJson        LONGTEXT NULL,
 
+    PayloadBinary BLOB NULL,
+    PayloadXml LONGTEXT NULL,
+    PayloadJson LONGTEXT NULL,
     -- Informational field, no other use.
+
     ModifiedOn DATETIME NOT NULL,
-
     -- The version of the stored payload.
-    Version INT NULL
 
+    Version INT NULL
     -- The following would in principle be the primary key, but it would be too thick
     -- to be indexed, so the values are hashed and only collisions will be solved
     -- by using the fields. That is, after the indexed queries have pinpointed the right
     -- rows down to [0, n] relevant ones, n being the number of collided value pairs.
+
 ) ROW_FORMAT = COMPRESSED KEY_BLOCK_SIZE = 16;
-ALTER TABLE Storage ADD INDEX IX_Storage (GrainIdHash, GrainTypeHash);
+
+ALTER TABLE Storage
+    ADD INDEX IX_Storage (GrainIdHash, GrainTypeHash);
 
 -- The following alters the column to JSON format if MySQL is at least of version 5.7.8.
 -- See more at https://dev.mysql.com/doc/refman/5.7/en/json.html for JSON and
 -- http://dev.mysql.com/doc/refman/5.7/en/comments.html for the syntax.
-/*!50708 ALTER TABLE Storage MODIFY COLUMN PayloadJson JSON */;
 
-DELIMITER $$
+/*!50708 ALTER TABLE Storage MODIFY COLUMN PayloadJson JSON */
+;
 
-CREATE PROCEDURE ClearStorage
-(
-    in _GrainIdHash INT,
-    in _GrainIdN0 BIGINT,
-    in _GrainIdN1 BIGINT,
-    in _GrainTypeHash INT,
-    in _GrainTypeString NVARCHAR(512),
-    in _GrainIdExtensionString NVARCHAR(512),
-    in _ServiceId NVARCHAR(150),
-    in _GrainStateVersion INT
-)
+DELIMITER $$ CREATE PROCEDURE ClearStorage (IN _GrainIdHash INT, IN _GrainIdN0 BIGINT, IN _GrainIdN1 BIGINT, IN _GrainTypeHash INT, IN _GrainTypeString NVARCHAR (512), IN _GrainIdExtensionString NVARCHAR (512), IN _ServiceId NVARCHAR (150), IN _GrainStateVersion INT)
 BEGIN
-    DECLARE _newGrainStateVersion INT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
-    DECLARE EXIT HANDLER FOR SQLWARNING BEGIN ROLLBACK; RESIGNAL; END;
+DECLARE
+    _newGrainStateVersion INT;
+DECLARE
+    EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+    ROLLBACK;
+    RESIGNAL;
+END;
 
-    SET _newGrainStateVersion = _GrainStateVersion;
+DECLARE
+    EXIT HANDLER FOR SQLWARNING
+BEGIN
+    ROLLBACK;
+    RESIGNAL;
+END;
 
-    -- Default level is REPEATABLE READ and may cause Gap Lock issues
-    SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
-    START TRANSACTION;
-    UPDATE Storage
+SET _newGrainStateVersion = _GrainStateVersion;
+
+-- Default level is REPEATABLE READ and may cause Gap Lock issues
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+START TRANSACTION;
+
+UPDATE
+    Storage
+SET
+    PayloadBinary = NULL,
+    PayloadJson = NULL,
+    PayloadXml = NULL,
+    Version = Version + 1
+WHERE
+    GrainIdHash = _GrainIdHash
+    AND _GrainIdHash IS NOT NULL
+    AND GrainTypeHash = _GrainTypeHash
+    AND _GrainTypeHash IS NOT NULL
+    AND GrainIdN0 = _GrainIdN0
+    AND _GrainIdN0 IS NOT NULL
+    AND GrainIdN1 = _GrainIdN1
+    AND _GrainIdN1 IS NOT NULL
+    AND GrainTypeString = _GrainTypeString
+    AND _GrainTypeString IS NOT NULL
+    AND ((_GrainIdExtensionString IS NOT NULL
+            AND GrainIdExtensionString IS NOT NULL
+            AND GrainIdExtensionString = _GrainIdExtensionString)
+        OR _GrainIdExtensionString IS NULL
+        AND GrainIdExtensionString IS NULL)
+    AND ServiceId = _ServiceId
+    AND _ServiceId IS NOT NULL
+    AND Version IS NOT NULL
+    AND Version = _GrainStateVersion
+    AND _GrainStateVersion IS NOT NULL
+LIMIT 1;
+
+IF ROW_COUNT () > 0 THEN
+    SET _newGrainStateVersion = _GrainStateVersion + 1;
+
+END IF;
+
+SELECT
+    _newGrainStateVersion AS NewGrainStateVersion;
+        COMMIT;
+END $$ DELIMITER $$ CREATE PROCEDURE WriteToStorage (IN _GrainIdHash INT, IN _GrainIdN0 BIGINT, IN _GrainIdN1 BIGINT, IN _GrainTypeHash INT, IN _GrainTypeString NVARCHAR (512), IN _GrainIdExtensionString NVARCHAR (512), IN _ServiceId NVARCHAR (150), IN _GrainStateVersion INT, IN _PayloadBinary BLOB, IN _PayloadJson LONGTEXT, IN _PayloadXml LONGTEXT)
+BEGIN
+DECLARE
+    _newGrainStateVersion INT;
+DECLARE
+    _rowCount INT;
+DECLARE
+    EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+    ROLLBACK;
+    RESIGNAL;
+END;
+
+DECLARE
+    EXIT HANDLER FOR SQLWARNING
+BEGIN
+    ROLLBACK;
+    RESIGNAL;
+END;
+
+SET _newGrainStateVersion = _GrainStateVersion;
+
+-- Default level is REPEATABLE READ and may cause Gap Lock issues
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+START TRANSACTION;
+
+-- Grain state is not null, so the state must have been read from the storage before.
+-- Let's try to update it.
+--
+-- When Orleans is running in normal, non-split state, there will
+-- be only one grain with the given ID and type combination only. This
+-- grain saves states mostly serially if Orleans guarantees are upheld. Even
+-- if not, the updates should work correctly due to version number.
+--
+-- In split brain situations there can be a situation where there are two or more
+-- grains with the given ID and type combination. When they try to INSERT
+-- concurrently, the table needs to be locked pessimistically before one of
+-- the grains gets @GrainStateVersion = 1 in return and the other grains will fail
+-- to update storage. The following arrangement is made to reduce locking in normal operation.
+--
+-- If the version number explicitly returned is still the same, Orleans interprets it so the update did not succeed
+-- and throws an InconsistentStateException.
+--
+-- See further information at https://dotnet.github.io/orleans/Documentation/Core-Features/Grain-Persistence.html.
+
+IF _GrainStateVersion IS NOT NULL THEN
+    UPDATE
+        Storage
     SET
-        PayloadBinary = NULL,
-        PayloadJson = NULL,
-        PayloadXml = NULL,
+        PayloadBinary = _PayloadBinary,
+        PayloadJson = _PayloadJson,
+        PayloadXml = _PayloadXml,
+        ModifiedOn = UTC_TIMESTAMP (),
         Version = Version + 1
     WHERE
-        GrainIdHash = _GrainIdHash AND _GrainIdHash IS NOT NULL
-        AND GrainTypeHash = _GrainTypeHash AND _GrainTypeHash IS NOT NULL
-        AND GrainIdN0 = _GrainIdN0 AND _GrainIdN0 IS NOT NULL
-        AND GrainIdN1 = _GrainIdN1 AND _GrainIdN1 IS NOT NULL
-        AND GrainTypeString = _GrainTypeString AND _GrainTypeString IS NOT NULL
-        AND ((_GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString = _GrainIdExtensionString) OR _GrainIdExtensionString IS NULL AND GrainIdExtensionString IS NULL)
-        AND ServiceId = _ServiceId AND _ServiceId IS NOT NULL
-        AND Version IS NOT NULL AND Version = _GrainStateVersion AND _GrainStateVersion IS NOT NULL
-        LIMIT 1;
+        GrainIdHash = _GrainIdHash
+        AND _GrainIdHash IS NOT NULL
+        AND GrainTypeHash = _GrainTypeHash
+        AND _GrainTypeHash IS NOT NULL
+        AND GrainIdN0 = _GrainIdN0
+        AND _GrainIdN0 IS NOT NULL
+        AND GrainIdN1 = _GrainIdN1
+        AND _GrainIdN1 IS NOT NULL
+        AND GrainTypeString = _GrainTypeString
+        AND _GrainTypeString IS NOT NULL
+        AND ((_GrainIdExtensionString IS NOT NULL
+                AND GrainIdExtensionString IS NOT NULL
+                AND GrainIdExtensionString = _GrainIdExtensionString)
+            OR _GrainIdExtensionString IS NULL
+            AND GrainIdExtensionString IS NULL)
+        AND ServiceId = _ServiceId
+        AND _ServiceId IS NOT NULL
+        AND Version IS NOT NULL
+        AND Version = _GrainStateVersion
+        AND _GrainStateVersion IS NOT NULL
+    LIMIT 1;
 
-    IF ROW_COUNT() > 0
-    THEN
-        SET _newGrainStateVersion = _GrainStateVersion + 1;
-    END IF;
+IF ROW_COUNT () > 0 THEN
+    SET _newGrainStateVersion = _GrainStateVersion + 1;
 
-    SELECT _newGrainStateVersion AS NewGrainStateVersion;
-    COMMIT;
-END$$
+SET _GrainStateVersion = _newGrainStateVersion;
 
-DELIMITER $$
-CREATE PROCEDURE WriteToStorage
-(
-    in _GrainIdHash INT,
-    in _GrainIdN0 BIGINT,
-    in _GrainIdN1 BIGINT,
-    in _GrainTypeHash INT,
-    in _GrainTypeString NVARCHAR(512),
-    in _GrainIdExtensionString NVARCHAR(512),
-    in _ServiceId NVARCHAR(150),
-    in _GrainStateVersion INT,
-    in _PayloadBinary BLOB,
-    in _PayloadJson LONGTEXT,
-    in _PayloadXml LONGTEXT
-)
-BEGIN
-    DECLARE _newGrainStateVersion INT;
-    DECLARE _rowCount INT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
-    DECLARE EXIT HANDLER FOR SQLWARNING BEGIN ROLLBACK; RESIGNAL; END;
+END IF;
 
-    SET _newGrainStateVersion = _GrainStateVersion;
+END IF;
 
-    -- Default level is REPEATABLE READ and may cause Gap Lock issues
-    SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
-    START TRANSACTION;
+-- The grain state has not been read. The following locks rather pessimistically
+-- to ensure only on INSERT succeeds.
 
-    -- Grain state is not null, so the state must have been read from the storage before.
-    -- Let's try to update it.
-    --
-    -- When Orleans is running in normal, non-split state, there will
-    -- be only one grain with the given ID and type combination only. This
-    -- grain saves states mostly serially if Orleans guarantees are upheld. Even
-    -- if not, the updates should work correctly due to version number.
-    --
-    -- In split brain situations there can be a situation where there are two or more
-    -- grains with the given ID and type combination. When they try to INSERT
-    -- concurrently, the table needs to be locked pessimistically before one of
-    -- the grains gets @GrainStateVersion = 1 in return and the other grains will fail
-    -- to update storage. The following arrangement is made to reduce locking in normal operation.
-    --
-    -- If the version number explicitly returned is still the same, Orleans interprets it so the update did not succeed
-    -- and throws an InconsistentStateException.
-    --
-    -- See further information at https://dotnet.github.io/orleans/Documentation/Core-Features/Grain-Persistence.html.
-    IF _GrainStateVersion IS NOT NULL
-    THEN
-        UPDATE Storage
-        SET
-            PayloadBinary = _PayloadBinary,
-            PayloadJson = _PayloadJson,
-            PayloadXml = _PayloadXml,
-            ModifiedOn = UTC_TIMESTAMP(),
-            Version = Version + 1
+IF _GrainStateVersion IS NULL THEN
+    INSERT INTO Storage (GrainIdHash, GrainIdN0, GrainIdN1, GrainTypeHash, GrainTypeString, GrainIdExtensionString, ServiceId, PayloadBinary, PayloadJson, PayloadXml, ModifiedOn, Version)
+SELECT
+    *
+FROM (
+    SELECT
+        _GrainIdHash,
+        _GrainIdN0,
+        _GrainIdN1,
+        _GrainTypeHash,
+        _GrainTypeString,
+        _GrainIdExtensionString,
+        _ServiceId,
+        _PayloadBinary,
+        _PayloadJson,
+        _PayloadXml,
+        UTC_TIMESTAMP (),
+        1) AS TMP
+WHERE
+    NOT EXISTS (
+        -- There should not be any version of this grain state.
+        SELECT
+            1
+        FROM
+            Storage
         WHERE
-            GrainIdHash = _GrainIdHash AND _GrainIdHash IS NOT NULL
-            AND GrainTypeHash = _GrainTypeHash AND _GrainTypeHash IS NOT NULL
-            AND GrainIdN0 = _GrainIdN0 AND _GrainIdN0 IS NOT NULL
-            AND GrainIdN1 = _GrainIdN1 AND _GrainIdN1 IS NOT NULL
-            AND GrainTypeString = _GrainTypeString AND _GrainTypeString IS NOT NULL
-            AND ((_GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString = _GrainIdExtensionString) OR _GrainIdExtensionString IS NULL AND GrainIdExtensionString IS NULL)
-            AND ServiceId = _ServiceId AND _ServiceId IS NOT NULL
-            AND Version IS NOT NULL AND Version = _GrainStateVersion AND _GrainStateVersion IS NOT NULL
-            LIMIT 1;
-
-        IF ROW_COUNT() > 0
-        THEN
-            SET _newGrainStateVersion = _GrainStateVersion + 1;
-            SET _GrainStateVersion = _newGrainStateVersion;
-        END IF;
+            GrainIdHash = _GrainIdHash
+            AND _GrainIdHash IS NOT NULL
+            AND GrainTypeHash = _GrainTypeHash
+            AND _GrainTypeHash IS NOT NULL
+            AND GrainIdN0 = _GrainIdN0
+            AND _GrainIdN0 IS NOT NULL
+            AND GrainIdN1 = _GrainIdN1
+            AND _GrainIdN1 IS NOT NULL
+            AND GrainTypeString = _GrainTypeString
+            AND _GrainTypeString IS NOT NULL
+            AND ((_GrainIdExtensionString IS NOT NULL
+                    AND GrainIdExtensionString IS NOT NULL
+                    AND GrainIdExtensionString = _GrainIdExtensionString)
+                OR _GrainIdExtensionString IS NULL
+                AND GrainIdExtensionString IS NULL)
+            AND ServiceId = _ServiceId
+            AND _ServiceId IS NOT NULL)
+    LIMIT 1;
+    IF ROW_COUNT () > 0 THEN
+        SET _newGrainStateVersion = 1;
     END IF;
-
-    -- The grain state has not been read. The following locks rather pessimistically
-    -- to ensure only on INSERT succeeds.
-    IF _GrainStateVersion IS NULL
-    THEN
-        INSERT INTO Storage
-        (
-            GrainIdHash,
-            GrainIdN0,
-            GrainIdN1,
-            GrainTypeHash,
-            GrainTypeString,
-            GrainIdExtensionString,
-            ServiceId,
-            PayloadBinary,
-            PayloadJson,
-            PayloadXml,
-            ModifiedOn,
-            Version
-        )
-        SELECT * FROM ( SELECT
-            _GrainIdHash,
-            _GrainIdN0,
-            _GrainIdN1,
-            _GrainTypeHash,
-            _GrainTypeString,
-            _GrainIdExtensionString,
-            _ServiceId,
-            _PayloadBinary,
-            _PayloadJson,
-            _PayloadXml,
-            UTC_TIMESTAMP(),
-            1) AS TMP
-        WHERE NOT EXISTS
-        (
-            -- There should not be any version of this grain state.
-            SELECT 1
-            FROM Storage
-            WHERE
-                GrainIdHash = _GrainIdHash AND _GrainIdHash IS NOT NULL
-                AND GrainTypeHash = _GrainTypeHash AND _GrainTypeHash IS NOT NULL
-                AND GrainIdN0 = _GrainIdN0 AND _GrainIdN0 IS NOT NULL
-                AND GrainIdN1 = _GrainIdN1 AND _GrainIdN1 IS NOT NULL
-                AND GrainTypeString = _GrainTypeString AND _GrainTypeString IS NOT NULL
-                AND ((_GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString = _GrainIdExtensionString) OR _GrainIdExtensionString IS NULL AND GrainIdExtensionString IS NULL)
-                AND ServiceId = _ServiceId AND _ServiceId IS NOT NULL
-        ) LIMIT 1;
-
-        IF ROW_COUNT() > 0
-        THEN
-            SET _newGrainStateVersion = 1;
-        END IF;
-    END IF;
-
-    SELECT _newGrainStateVersion AS NewGrainStateVersion;
-    COMMIT;
-END$$
-
-DELIMITER ;
-
-INSERT INTO OrleansQuery(QueryKey, QueryText)
-VALUES
-(
-    'ReadFromStorageKey',
-    'SELECT
-        PayloadBinary,
-        PayloadXml,
-        PayloadJson,
-        UTC_TIMESTAMP(),
-        Version
-    FROM
-        Storage
-    WHERE
-        GrainIdHash = @GrainIdHash
-        AND GrainTypeHash = @GrainTypeHash AND @GrainTypeHash IS NOT NULL
-        AND GrainIdN0 = @GrainIdN0 AND @GrainIdN0 IS NOT NULL
-        AND GrainIdN1 = @GrainIdN1 AND @GrainIdN1 IS NOT NULL
-        AND GrainTypeString = @GrainTypeString AND GrainTypeString IS NOT NULL
-        AND ((@GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString = @GrainIdExtensionString) OR @GrainIdExtensionString IS NULL AND GrainIdExtensionString IS NULL)
-        AND ServiceId = @ServiceId AND @ServiceId IS NOT NULL
-        LIMIT 1;'
-);
-
-INSERT INTO OrleansQuery(QueryKey, QueryText)
-VALUES
-(
-    'WriteToStorageKey','
-    call WriteToStorage(@GrainIdHash, @GrainIdN0, @GrainIdN1, @GrainTypeHash, @GrainTypeString, @GrainIdExtensionString, @ServiceId, @GrainStateVersion, @PayloadBinary, @PayloadJson, @PayloadXml);'
-);
-
-INSERT INTO OrleansQuery(QueryKey, QueryText)
-VALUES
-(
-    'ClearStorageKey','
-    call ClearStorage(@GrainIdHash, @GrainIdN0, @GrainIdN1, @GrainTypeHash, @GrainTypeString, @GrainIdExtensionString, @ServiceId, @GrainStateVersion);'
-);
+END IF;
+        SELECT
+            _newGrainStateVersion AS NewGrainStateVersion;
+        COMMIT;
+END $$ DELIMITER;
+    INSERT INTO OrleansQuery (QueryKey, QueryText)
+        VALUES ('ReadFromStorageKey', 'SELECT
+         PayloadBinary,
+         PayloadXml,
+         PayloadJson,
+         UTC_TIMESTAMP(),
+         Version
+     FROM
+         Storage
+     WHERE
+         GrainIdHash = @GrainIdHash
+         AND GrainTypeHash = @GrainTypeHash AND @GrainTypeHash IS NOT NULL
+         AND GrainIdN0 = @GrainIdN0 AND @GrainIdN0 IS NOT NULL
+         AND GrainIdN1 = @GrainIdN1 AND @GrainIdN1 IS NOT NULL
+         AND GrainTypeString = @GrainTypeString AND GrainTypeString IS NOT NULL
+         AND ((@GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString IS NOT NULL AND GrainIdExtensionString = @GrainIdExtensionString) OR @GrainIdExtensionString IS NULL AND GrainIdExtensionString IS NULL)
+         AND ServiceId = @ServiceId AND @ServiceId IS NOT NULL
+         LIMIT 1;');
+    INSERT INTO OrleansQuery (QueryKey, QueryText)
+        VALUES ('WriteToStorageKey', '
+     call WriteToStorage(@GrainIdHash, @GrainIdN0, @GrainIdN1, @GrainTypeHash, @GrainTypeString, @GrainIdExtensionString, @ServiceId, @GrainStateVersion, @PayloadBinary, @PayloadJson, @PayloadXml);');
+    INSERT INTO OrleansQuery (QueryKey, QueryText)
+        VALUES ('ClearStorageKey', '
+     call ClearStorage(@GrainIdHash, @GrainIdN0, @GrainIdN1, @GrainTypeHash, @GrainTypeString, @GrainIdExtensionString, @ServiceId, @GrainStateVersion);');
