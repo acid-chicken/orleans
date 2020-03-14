@@ -38,8 +38,8 @@ INSERT INTO OrleansQuery (QueryKey, QueryText)
          Period = @Period,
          GrainHash = @GrainHash,
          Version = last_insert_id(Version+1);
- 
- 
+
+
      SELECT last_insert_id() AS Version;
  ');
 INSERT INTO OrleansQuery (QueryKey, QueryText)

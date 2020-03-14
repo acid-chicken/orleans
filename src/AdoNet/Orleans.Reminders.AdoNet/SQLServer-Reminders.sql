@@ -25,7 +25,7 @@ INSERT INTO OrleansQuery (QueryKey, QueryText)
  		ServiceId = @ServiceId AND @ServiceId IS NOT NULL
  		AND GrainId = @GrainId AND @GrainId IS NOT NULL
  		AND ReminderName = @ReminderName AND @ReminderName IS NOT NULL;
- 
+
  	INSERT INTO OrleansRemindersTable
  	(
  		ServiceId,
