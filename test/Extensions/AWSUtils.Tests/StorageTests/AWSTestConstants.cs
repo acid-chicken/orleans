@@ -9,44 +9,53 @@ using System.Collections.Generic;
 
 namespace AWSUtils.Tests.StorageTests
 {
-    public class AWSTestConstants
+public class AWSTestConstants
+{
+    private static readonly Lazy<bool> _isDynamoDbAvailable = new Lazy<bool>(() =>
     {
-        private static readonly Lazy<bool> _isDynamoDbAvailable = new Lazy<bool>(() =>
+        try
         {
+            DynamoDBStorage storage;
             try
             {
-                DynamoDBStorage storage;
-                try
-                {
-                    storage = new DynamoDBStorage(NullLoggerFactory.Instance.CreateLogger("DynamoDBStorage"), Service);
-                }
-                catch (AmazonServiceException)
-                {
-                    return false;
-                }
-                storage.InitializeTable("TestTable", new List<KeySchemaElement> {
-                    new KeySchemaElement { AttributeName = "PartitionKey", KeyType = KeyType.HASH }
-                }, new List<AttributeDefinition> {
-                    new AttributeDefinition { AttributeName = "PartitionKey", AttributeType = ScalarAttributeType.S }
-                }).WithTimeout(TimeSpan.FromSeconds(2)).Wait();
-                return true;
+                storage = new DynamoDBStorage(NullLoggerFactory.Instance.CreateLogger("DynamoDBStorage"), Service);
             }
-            catch (Exception exc)
+            catch (AmazonServiceException)
             {
-                if (exc.InnerException is TimeoutException)
-                    return false;
-
-                throw;
+                return false;
             }
-        });
+            storage.InitializeTable("TestTable", new List<KeySchemaElement> {
+                new KeySchemaElement { AttributeName = "PartitionKey", KeyType = KeyType.HASH }
+            }, new List<AttributeDefinition> {
+                new AttributeDefinition { AttributeName = "PartitionKey", AttributeType = ScalarAttributeType.S }
+            }).WithTimeout(TimeSpan.FromSeconds(2)).Wait();
+            return true;
+        }
+        catch (Exception exc)
+        {
+            if (exc.InnerException is TimeoutException)
+                return false;
 
-        public static string DefaultSQSConnectionString = "";
+            throw;
+        }
+    });
 
-        public static string AccessKey { get; set; }
-        public static string SecretKey { get; set; }
-        public static string Service { get; set; } = "http://localhost:8000";
+    public static string DefaultSQSConnectionString = "";
 
-        public static bool IsDynamoDbAvailable => _isDynamoDbAvailable.Value;
-        public static bool IsSqsAvailable => !string.IsNullOrWhiteSpace(DefaultSQSConnectionString);
+    public static string AccessKey {
+        get;
+        set;
     }
+    public static string SecretKey {
+        get;
+        set;
+    }
+    public static string Service {
+        get;
+        set;
+    } = "http://localhost:8000";
+
+    public static bool IsDynamoDbAvailable => _isDynamoDbAvailable.Value;
+    public static bool IsSqsAvailable => !string.IsNullOrWhiteSpace(DefaultSQSConnectionString);
+}
 }

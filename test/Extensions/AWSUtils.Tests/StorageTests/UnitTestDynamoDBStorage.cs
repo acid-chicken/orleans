@@ -8,102 +8,117 @@ using Orleans.AWSUtils.Tests;
 
 namespace AWSUtils.Tests.StorageTests
 {
-    [Serializable]
-    internal class UnitTestDynamoDBTableData
+[Serializable]
+internal class UnitTestDynamoDBTableData
+{
+    private const string DATA_FIELD = "Data";
+    private const string STRING_DATA_FIELD = "StringData";
+
+    public string PartitionKey {
+        get;
+        set;
+    }
+    public string RowKey {
+        get;
+        set;
+    }
+    public int ETag {
+        get;
+        set;
+    }
+    public byte[] BinaryData {
+        get;
+        set;
+    }
+
+    public string StringData {
+        get;
+        set;
+    }
+
+    public UnitTestDynamoDBTableData()
     {
-        private const string DATA_FIELD = "Data";
-        private const string STRING_DATA_FIELD = "StringData";
 
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public int ETag { get; set; }
-        public byte[] BinaryData { get; set; }
+    }
 
-        public string StringData { get; set; }
-
-        public UnitTestDynamoDBTableData()
+    public UnitTestDynamoDBTableData(Dictionary<string, AttributeValue> fields)
+    {
+        if (fields.ContainsKey("PartitionKey"))
         {
-
+            PartitionKey = fields["PartitionKey"].S;
         }
 
-        public UnitTestDynamoDBTableData(Dictionary<string, AttributeValue> fields)
+        if (fields.ContainsKey("RowKey"))
         {
-            if (fields.ContainsKey("PartitionKey"))
-            {
-                PartitionKey = fields["PartitionKey"].S;
-            }
-
-            if (fields.ContainsKey("RowKey"))
-            {
-                RowKey = fields["RowKey"].S;
-            }
-
-            if (fields.ContainsKey("StringData"))
-            {
-                StringData = fields["StringData"].S;
-            }
-
-            if (fields.ContainsKey("ETag"))
-            {
-                ETag = int.Parse(fields["ETag"].N);
-            }
-
-            if (fields.ContainsKey("BinaryData"))
-            {
-                BinaryData = fields["BinaryData"].B.ToArray();
-            }
+            RowKey = fields["RowKey"].S;
         }
 
-        public UnitTestDynamoDBTableData(string data, string partitionKey, string rowKey)
+        if (fields.ContainsKey("StringData"))
         {
-            StringData = data;
-            PartitionKey = partitionKey;
-            RowKey = rowKey;
+            StringData = fields["StringData"].S;
         }
 
-        public UnitTestDynamoDBTableData Clone()
+        if (fields.ContainsKey("ETag"))
         {
-            return new UnitTestDynamoDBTableData
-            {
-                StringData = this.StringData,
-                PartitionKey = this.PartitionKey,
-                RowKey = this.RowKey
-            };
+            ETag = int.Parse(fields["ETag"].N);
         }
 
-        public override string ToString()
+        if (fields.ContainsKey("BinaryData"))
         {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("UnitTestDDBData[");
-            sb.Append(" PartitionKey=").Append(PartitionKey);
-            sb.Append(" RowKey=").Append(RowKey);
-            sb.Append(" ETag=").Append(ETag);
-            sb.Append(" ]");
-            return sb.ToString();
+            BinaryData = fields["BinaryData"].B.ToArray();
         }
     }
 
-    internal class UnitTestDynamoDBStorage : DynamoDBStorage
+    public UnitTestDynamoDBTableData(string data, string partitionKey, string rowKey)
     {
-        public const string INSTANCE_TABLE_NAME = "UnitTestDDBTableData";
+        StringData = data;
+        PartitionKey = partitionKey;
+        RowKey = rowKey;
+    }
 
-        public UnitTestDynamoDBStorage()
-            : base(NullLoggerFactory.Instance.CreateLogger("DynamoDBStorage"), AWSTestConstants.Service)
+    public UnitTestDynamoDBTableData Clone()
+    {
+        return new UnitTestDynamoDBTableData
         {
-            if (AWSTestConstants.IsDynamoDbAvailable)
+            StringData = this.StringData,
+            PartitionKey = this.PartitionKey,
+            RowKey = this.RowKey
+        };
+    }
+
+    public override string ToString()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append("UnitTestDDBData[");
+        sb.Append(" PartitionKey=").Append(PartitionKey);
+        sb.Append(" RowKey=").Append(RowKey);
+        sb.Append(" ETag=").Append(ETag);
+        sb.Append(" ]");
+        return sb.ToString();
+    }
+}
+
+internal class UnitTestDynamoDBStorage : DynamoDBStorage
+{
+    public const string INSTANCE_TABLE_NAME = "UnitTestDDBTableData";
+
+    public UnitTestDynamoDBStorage()
+        : base(NullLoggerFactory.Instance.CreateLogger("DynamoDBStorage"), AWSTestConstants.Service)
+    {
+        if (AWSTestConstants.IsDynamoDbAvailable)
+        {
+            InitializeTable(INSTANCE_TABLE_NAME,
+                            new List<KeySchemaElement>
             {
-                InitializeTable(INSTANCE_TABLE_NAME,
-                               new List<KeySchemaElement>
-                               {
-                    new KeySchemaElement { AttributeName = "PartitionKey", KeyType = KeyType.HASH },
-                    new KeySchemaElement { AttributeName = "RowKey", KeyType = KeyType.RANGE }
-                               },
-                               new List<AttributeDefinition>
-                               {
-                    new AttributeDefinition { AttributeName = "PartitionKey", AttributeType = ScalarAttributeType.S },
-                    new AttributeDefinition { AttributeName = "RowKey", AttributeType = ScalarAttributeType.S }
-                               }).Wait();
-            }
+                new KeySchemaElement { AttributeName = "PartitionKey", KeyType = KeyType.HASH },
+                new KeySchemaElement { AttributeName = "RowKey", KeyType = KeyType.RANGE }
+            },
+            new List<AttributeDefinition>
+            {
+                new AttributeDefinition { AttributeName = "PartitionKey", AttributeType = ScalarAttributeType.S },
+                new AttributeDefinition { AttributeName = "RowKey", AttributeType = ScalarAttributeType.S }
+            }).Wait();
         }
     }
+}
 }
