@@ -1,59 +1,77 @@
-namespace Orleans.Connections.Security
-{
-    using System.Net.Security;
-    using System.Security.Authentication;
-    using System.Security.Cryptography.X509Certificates;
+using System.Collections.Generic;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
-    public delegate X509Certificate ServerCertificateSelectionCallback(object sender, string hostName);
+namespace Orleans.Connections.Security {
+  public delegate X509Certificate ServerCertificateSelectionCallback(
+      object sender, string hostName);
 
-    public class TlsServerAuthenticationOptions
-    {
+  public class TlsServerAuthenticationOptions {
 #if NETCOREAPP
-        internal SslServerAuthenticationOptions Value { get; } = new SslServerAuthenticationOptions();
+    internal SslServerAuthenticationOptions Value { get; }
+    = new SslServerAuthenticationOptions{
+        ApplicationProtocols = new List<SslApplicationProtocol>{
+            OrleansApplicationProtocol.Orleans1}};
 
-        public X509Certificate ServerCertificate
-        {
-            get => Value.ServerCertificate;
-            set => Value.ServerCertificate = value;
-        }
-
-        public ServerCertificateSelectionCallback ServerCertificateSelectionCallback
-        {
-            get => Value.ServerCertificateSelectionCallback is null ? null : new ServerCertificateSelectionCallback(Value.ServerCertificateSelectionCallback);
-            set => Value.ServerCertificateSelectionCallback = value is null ? null : new System.Net.Security.ServerCertificateSelectionCallback(value);
-        }
-
-        public bool ClientCertificateRequired
-        {
-            get => Value.ClientCertificateRequired;
-            set => Value.ClientCertificateRequired = value;
-        }
-
-        public SslProtocols EnabledSslProtocols
-        {
-            get => Value.EnabledSslProtocols;
-            set => Value.EnabledSslProtocols = value;
-        }
-
-        public X509RevocationMode CertificateRevocationCheckMode
-        {
-            get => Value.CertificateRevocationCheckMode;
-            set => Value.CertificateRevocationCheckMode = value;
-        }
-
-        public object SslServerAuthenticationOptions => this.Value;
-#else
-        public X509Certificate ServerCertificate { get; set; }
-
-        public ServerCertificateSelectionCallback ServerCertificateSelectionCallback { get; set; }
-
-        public bool ClientCertificateRequired { get; set; }
-
-        public SslProtocols EnabledSslProtocols { get; set; }
-
-        public X509RevocationMode CertificateRevocationCheckMode { get; set; }
-
-        public object SslServerAuthenticationOptions => null;
-#endif
+    public X509Certificate ServerCertificate {
+      get => Value.ServerCertificate;
+      set => Value.ServerCertificate = value;
     }
+
+    public ServerCertificateSelectionCallback
+        ServerCertificateSelectionCallback {
+      get => Value.ServerCertificateSelectionCallback is null ? null
+          : new ServerCertificateSelectionCallback(
+                Value.ServerCertificateSelectionCallback);
+      set => Value.ServerCertificateSelectionCallback = value is null ? null
+          : new System.Net.Security.ServerCertificateSelectionCallback(value);
+    }
+
+    public bool ClientCertificateRequired {
+      get => Value.ClientCertificateRequired;
+      set => Value.ClientCertificateRequired = value;
+    }
+
+    public SslProtocols EnabledSslProtocols {
+      get => Value.EnabledSslProtocols;
+      set => Value.EnabledSslProtocols = value;
+    }
+
+    public X509RevocationMode CertificateRevocationCheckMode {
+      get => Value.CertificateRevocationCheckMode;
+      set => Value.CertificateRevocationCheckMode = value;
+    }
+
+    public object SslServerAuthenticationOptions => this.Value;
+#else
+    public X509Certificate ServerCertificate {
+      get;
+      set;
+    }
+
+    public ServerCertificateSelectionCallback
+        ServerCertificateSelectionCallback {
+      get;
+      set;
+    }
+
+    public bool ClientCertificateRequired {
+      get;
+      set;
+    }
+
+    public SslProtocols EnabledSslProtocols {
+      get;
+      set;
+    }
+
+    public X509RevocationMode CertificateRevocationCheckMode {
+      get;
+      set;
+    }
+
+    public object SslServerAuthenticationOptions => null;
+#endif
+  }
 }
