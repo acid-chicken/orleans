@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 
 //
-// Number of #ifs can be reduced (or removed), once we separate test projects by feature/area, otherwise we are ending up with ambigous types and build errors.
+// Number of #ifs can be reduced (or removed), once we separate test projects by
+// feature/area, otherwise we are ending up with ambigous types and build
+// errors.
 //
 
 #if ORLEANS_CLUSTERING
@@ -21,12 +23,12 @@ namespace Orleans.Transactions.AzureStorage.Utilities
 #elif ORLEANS_DIRECTORY
 namespace Orleans.GrainDirectory.AzureStorage.Utilities
 #else
-// No default namespace intentionally to cause compile errors if something is not defined
+// No default namespace intentionally to cause compile errors if something is
+// not defined
 #endif
 {
-[SuppressMessage("ReSharper", "InconsistentNaming")]
-internal enum ErrorCode
-{
+  [SuppressMessage("ReSharper", "InconsistentNaming")]
+  internal enum ErrorCode {
     Runtime = 100000,
     AzureTableBase = Runtime + 800,
 
@@ -50,5 +52,5 @@ internal enum ErrorCode
     // Azure storage provider related
     AzureTable_DataNotFound = AzureTableBase + 50,
     AzureTable_TableNotCreated = AzureTableBase + 51,
-}
+  }
 }

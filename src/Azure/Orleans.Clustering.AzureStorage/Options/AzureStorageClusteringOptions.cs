@@ -10,25 +10,27 @@ namespace Orleans.Streaming.AzureStorage
 namespace Orleans.Streaming.EventHubs
 #elif TESTER_AZUREUTILS
 namespace Orleans.Tests.AzureUtils
-#elif ORLEANS_HOSTING_CLOUDSERVICES // Temporary until azure silo/client is refactored
+#elif ORLEANS_HOSTING_CLOUDSERVICES // Temporary until azure silo/client is
+                                    // refactored
 namespace Orleans.Hosting.AzureCloudServices
 #elif ORLEANS_TRANSACTIONS
 namespace Orleans.Transactions.AzureStorage
 #elif ORLEANS_DIRECTORY
 namespace Orleans.GrainDirectory.AzureStorage
 #else
-// No default namespace intentionally to cause compile errors if something is not defined
+// No default namespace intentionally to cause compile errors if something is
+// not defined
 #endif
 {
-/// <summary>
-/// Specify options used for AzureTableBasedMembership
-/// </summary>
-public class AzureStorageClusteringOptions : AzureStorageOperationOptions
-{
+  /// <summary>
+  /// Specify options used for AzureTableBasedMembership
+  /// </summary>
+  public class AzureStorageClusteringOptions : AzureStorageOperationOptions {
     public override string TableName {
-        get;
-        set;
-    } = DEFAULT_TABLE_NAME;
+      get;
+      set;
+    }
+    = DEFAULT_TABLE_NAME;
     public const string DEFAULT_TABLE_NAME = "OrleansSiloInstances";
-}
+  }
 }

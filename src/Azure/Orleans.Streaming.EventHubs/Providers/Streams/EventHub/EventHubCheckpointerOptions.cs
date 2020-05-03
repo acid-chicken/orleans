@@ -2,45 +2,48 @@ using Orleans.Runtime;
 using Orleans.Streaming.EventHubs;
 using System;
 
-namespace Orleans.Configuration
-{
-public class AzureTableStreamCheckpointerOptions : AzureStorageOperationOptions
-{
+namespace Orleans.Configuration {
+  public class AzureTableStreamCheckpointerOptions
+      : AzureStorageOperationOptions {
     /// <summary>
     /// Azure table name.
     /// </summary>
     public override string TableName {
-        get;
-        set;
-    } = DEFAULT_TABLE_NAME;
+      get;
+      set;
+    }
+    = DEFAULT_TABLE_NAME;
     public const string DEFAULT_TABLE_NAME = "Checkpoint";
 
     /// <summary>
     /// Interval to write checkpoints.  Prevents spamming storage.
     /// </summary>
     public TimeSpan PersistInterval {
-        get;
-        set;
-    } = DEFAULT_CHECKPOINT_PERSIST_INTERVAL;
-    public static readonly TimeSpan DEFAULT_CHECKPOINT_PERSIST_INTERVAL = TimeSpan.FromMinutes(1);
-}
+      get;
+      set;
+    }
+    = DEFAULT_CHECKPOINT_PERSIST_INTERVAL;
+    public static readonly TimeSpan DEFAULT_CHECKPOINT_PERSIST_INTERVAL =
+        TimeSpan.FromMinutes(1);
+  }
 
-//TOOD: how to wire this validator into DI?
-public class AzureTableStreamCheckpointerOptionsValidator : IConfigurationValidator
-{
+  // TOOD: how to wire this validator into DI?
+  public class AzureTableStreamCheckpointerOptionsValidator
+      : IConfigurationValidator {
     private readonly AzureTableStreamCheckpointerOptions options;
     private string name;
-    public AzureTableStreamCheckpointerOptionsValidator(AzureTableStreamCheckpointerOptions options, string name)
-    {
-        this.options = options;
-        this.name = name;
+    public AzureTableStreamCheckpointerOptionsValidator(
+        AzureTableStreamCheckpointerOptions options, string name) {
+      this.options = options;
+      this.name = name;
     }
-    public void ValidateConfiguration()
-    {
-        if (String.IsNullOrEmpty(options.ConnectionString))
-            throw new OrleansConfigurationException($"{nameof(AzureTableStreamCheckpointerOptions)} with name {this.name} is invalid. {nameof(AzureTableStreamCheckpointerOptions.ConnectionString)} is invalid");
-        if (String.IsNullOrEmpty(options.TableName))
-            throw new OrleansConfigurationException($"{nameof(AzureTableStreamCheckpointerOptions)} with name {this.name} is invalid. {nameof(AzureTableStreamCheckpointerOptions.TableName)} is invalid");
+    public void ValidateConfiguration() {
+      if (String.IsNullOrEmpty(options.ConnectionString))
+        throw new OrleansConfigurationException(
+            $"{nameof(AzureTableStreamCheckpointerOptions)} with name {this.name} is invalid. {nameof(AzureTableStreamCheckpointerOptions.ConnectionString)} is invalid");
+      if (String.IsNullOrEmpty(options.TableName))
+        throw new OrleansConfigurationException(
+            $"{nameof(AzureTableStreamCheckpointerOptions)} with name {this.name} is invalid. {nameof(AzureTableStreamCheckpointerOptions.TableName)} is invalid");
     }
-}
+  }
 }

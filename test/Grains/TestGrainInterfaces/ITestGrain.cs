@@ -5,85 +5,78 @@ using Orleans;
 using Orleans.Concurrency;
 using Orleans.Runtime;
 
-namespace UnitTests.GrainInterfaces
-{
-public interface ITestGrain : IGrainWithIntegerKey
-{
+namespace UnitTests.GrainInterfaces {
+  public interface ITestGrain : IGrainWithIntegerKey {
     // duplicate to verify identity
-    Task<long> GetKey();
+    Task<long>GetKey();
 
     // separate label that can be set
-    Task<string> GetLabel();
+    Task<string>GetLabel();
 
     Task SetLabel(string label);
 
-    Task<string> GetRuntimeInstanceId();
+    Task<string>GetRuntimeInstanceId();
 
-    Task<string> GetActivationId();
+    Task<string>GetActivationId();
 
-    Task<ITestGrain> GetGrainReference();
+    Task<ITestGrain>GetGrainReference();
 
-    Task<Tuple<string, string>> TestRequestContext();
+    Task<Tuple<string, string>>TestRequestContext();
 
-    Task<IGrain[]> GetMultipleGrainInterfaces_Array();
+    Task<IGrain[]>GetMultipleGrainInterfaces_Array();
 
-    Task<List<IGrain>> GetMultipleGrainInterfaces_List();
+    Task<List<IGrain>>GetMultipleGrainInterfaces_List();
 
     Task StartTimer();
 
     Task DoLongAction(TimeSpan timespan, string str);
-}
+  }
 
-public interface IGuidTestGrain : IGrainWithGuidKey
-{
+  public interface IGuidTestGrain : IGrainWithGuidKey {
     // duplicate to verify identity
-    Task<Guid> GetKey();
+    Task<Guid>GetKey();
 
     // separate label that can be set
-    Task<string> GetLabel();
+    Task<string>GetLabel();
 
     Task SetLabel(string label);
 
-    Task<string> GetRuntimeInstanceId();
+    Task<string>GetRuntimeInstanceId();
 
-    Task<string> GetActivationId();
-}
+    Task<string>GetActivationId();
+  }
 
-public interface IOneWayGrain : IGrainWithGuidKey
-{
-    [OneWay]
-    Task Notify(ISimpleGrainObserver observer);
+  public interface IOneWayGrain : IGrainWithGuidKey {
+    [OneWay] Task Notify(ISimpleGrainObserver observer);
 
-    [OneWay]
-    ValueTask NotifyValueTask(ISimpleGrainObserver observer);
+    [OneWay] ValueTask NotifyValueTask(ISimpleGrainObserver observer);
 
-    [OneWay]
-    Task ThrowsOneWay();
+    [OneWay] Task ThrowsOneWay();
 
-    [OneWay]
-    ValueTask ThrowsOneWayValueTask();
+    [OneWay] ValueTask ThrowsOneWayValueTask();
 
-    Task<bool> NotifyOtherGrain(IOneWayGrain otherGrain, ISimpleGrainObserver observer);
+    Task<bool>NotifyOtherGrain(IOneWayGrain otherGrain,
+                               ISimpleGrainObserver observer);
 
-    Task<bool> NotifyOtherGrainValueTask(IOneWayGrain otherGrain, ISimpleGrainObserver observer);
+    Task<bool>NotifyOtherGrainValueTask(IOneWayGrain otherGrain,
+                                        ISimpleGrainObserver observer);
 
-    Task<IOneWayGrain> GetOtherGrain();
+    Task<IOneWayGrain>GetOtherGrain();
 
     Task NotifyOtherGrain();
 
-    Task<int> GetCount();
+    Task<int>GetCount();
 
     Task Deactivate();
 
-    Task<SiloAddress> GetSiloAddress();
+    Task<SiloAddress>GetSiloAddress();
 
-    Task<SiloAddress> GetPrimaryForGrain();
+    Task<SiloAddress>GetPrimaryForGrain();
 
-    Task<string> GetActivationAddress(IGrain grain);
-}
+    Task<string>GetActivationAddress(IGrain grain);
+  }
 
-public interface ICanBeOneWayGrain : IGrainWithGuidKey
-{
+  public interface ICanBeOneWayGrain : IGrainWithGuidKey {
     Task Notify(ISimpleGrainObserver observer);
 
     ValueTask NotifyValueTask(ISimpleGrainObserver observer);
@@ -92,6 +85,6 @@ public interface ICanBeOneWayGrain : IGrainWithGuidKey
 
     ValueTask ThrowsValueTask();
 
-    Task<int> GetCount();
-}
+    Task<int>GetCount();
+  }
 }

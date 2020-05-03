@@ -4,14 +4,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace Orleans.Runtime.Scheduler
-{
-/// <summary>
-/// A single-concurrency, in-order task scheduler for per-activation work scheduling.
-/// </summary>
-[DebuggerDisplay("ActivationTaskScheduler-{myId} RunQueue={workerGroup.WorkItemCount}")]
-internal class ActivationTaskScheduler : TaskScheduler
-{
+namespace Orleans.Runtime.Scheduler {
+  /// <summary>
+  /// A single-concurrency, in-order task scheduler for per-activation work
+  /// scheduling.
+  /// </summary>
+  [DebuggerDisplay(
+      "ActivationTaskScheduler-{myId} RunQueue={workerGroup.WorkItemCount}")]
+  internal class ActivationTaskScheduler : TaskScheduler {
     private readonly ILogger logger;
 
     private static long idCounter;
@@ -21,100 +21,129 @@ internal class ActivationTaskScheduler : TaskScheduler
     private readonly CounterStatistic turnsExecutedStatistic;
 #endif
 
-    internal ActivationTaskScheduler(WorkItemGroup workGroup, ILogger<ActivationTaskScheduler> logger)
-    {
-        this.logger = logger;
-        myId = Interlocked.Increment(ref idCounter);
-        workerGroup = workGroup;
+    internal ActivationTaskScheduler(WorkItemGroup workGroup,
+                                     ILogger<ActivationTaskScheduler>logger) {
+      this.logger = logger;
+      myId = Interlocked.Increment(ref idCounter);
+      workerGroup = workGroup;
 #if EXTRA_STATS
-        turnsExecutedStatistic = CounterStatistic.FindOrCreate(name + ".TasksExecuted");
+      turnsExecutedStatistic =
+          CounterStatistic.FindOrCreate(name + ".TasksExecuted");
 #endif
-        if (logger.IsEnabled(LogLevel.Debug)) logger.Debug("Created {0} with GrainContext={1}", this, workerGroup.GrainContext);
+      if (logger.IsEnabled(LogLevel.Debug))
+        logger.Debug("Created {0} with GrainContext={1}", this,
+                     workerGroup.GrainContext);
     }
 
-    /// <summary>Gets an enumerable of the tasks currently scheduled on this scheduler.</summary>
-    /// <returns>An enumerable of the tasks currently scheduled.</returns>
-    protected override IEnumerable<Task> GetScheduledTasks() => this.workerGroup.GetScheduledTasks();
+    /// <summary>Gets an enumerable of the tasks currently scheduled on this
+    /// scheduler.</summary> <returns>An enumerable of the tasks currently
+    /// scheduled.</returns>
+    protected override IEnumerable<Task>
+    GetScheduledTasks() => this.workerGroup.GetScheduledTasks();
 
-    public void RunTask(Task task)
-    {
-        RuntimeContext.SetExecutionContext(workerGroup.GrainContext);
-        bool done = TryExecuteTask(task);
-        if (!done)
-            logger.Warn(ErrorCode.SchedulerTaskExecuteIncomplete4, "RunTask: Incomplete base.TryExecuteTask for Task Id={0} with Status={1}",
-                        task.Id, task.Status);
+    public void RunTask(Task task) {
+      RuntimeContext.SetExecutionContext(workerGroup.GrainContext);
+      bool done = TryExecuteTask(task);
+      if (!done)
+        logger.Warn(
+            ErrorCode.SchedulerTaskExecuteIncomplete4,
+            "RunTask: Incomplete base.TryExecuteTask for Task Id={0} with Status={1}",
+            task.Id, task.Status);
 
-        //  Consider adding ResetExecutionContext() or even better:
-        //  Consider getting rid of ResetExecutionContext completely and just making sure we always call SetExecutionContext before TryExecuteTask.
+      //  Consider adding ResetExecutionContext() or even better:
+      //  Consider getting rid of ResetExecutionContext completely and just
+      //  making sure we always call SetExecutionContext before TryExecuteTask.
     }
 
     /// <summary>Queues a task to the scheduler.</summary>
     /// <param name="task">The task to be queued.</param>
-    protected override void QueueTask(Task task)
-    {
+    protected override void QueueTask(Task task) {
 #if DEBUG
-        if (logger.IsEnabled(LogLevel.Trace)) logger.Trace(myId + " QueueTask Task Id={0}", task.Id);
+      if (logger.IsEnabled(LogLevel.Trace))
+        logger.Trace(myId + " QueueTask Task Id={0}", task.Id);
 #endif
-        workerGroup.EnqueueTask(task);
+      workerGroup.EnqueueTask(task);
     }
 
     /// <summary>
-    /// Determines whether the provided <see cref="T:System.Threading.Tasks.Task"/> can be executed synchronously in this call, and if it can, executes it.
+    /// Determines whether the provided <see
+    /// cref="T:System.Threading.Tasks.Task"/> can be executed synchronously in
+    /// this call, and if it can, executes it.
     /// </summary>
     /// <returns>
     /// A Boolean value indicating whether the task was executed inline.
     /// </returns>
-    /// <param name="task">The <see cref="T:System.Threading.Tasks.Task"/> to be executed.</param>
-    /// <param name="taskWasPreviouslyQueued">A Boolean denoting whether or not task has previously been queued. If this parameter is True, then the task may have been previously queued (scheduled); if False, then the task is known not to have been queued, and this call is being made in order to execute the task inline without queuing it.</param>
-    protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
-    {
-        RuntimeContext ctx = RuntimeContext.Current;
-        bool canExecuteInline = ctx != null && object.Equals(ctx.GrainContext, workerGroup.GrainContext);
+    /// <param name="task">The <see cref="T:System.Threading.Tasks.Task"/> to be
+    /// executed.</param> <param name="taskWasPreviouslyQueued">A Boolean
+    /// denoting whether or not task has previously been queued. If this
+    /// parameter is True, then the task may have been previously queued
+    /// (scheduled); if False, then the task is known not to have been queued,
+    /// and this call is being made in order to execute the task inline without
+    /// queuing it.</param>
+    protected override bool TryExecuteTaskInline(Task task,
+                                                 bool taskWasPreviouslyQueued) {
+      RuntimeContext ctx = RuntimeContext.Current;
+      bool canExecuteInline =
+          ctx != null &&
+          object.Equals(ctx.GrainContext, workerGroup.GrainContext);
 
+#if DEBUG
+      if (logger.IsEnabled(LogLevel.Trace)) {
+        logger.Trace(
+            myId +
+                " --> TryExecuteTaskInline Task Id={0} Status={1} PreviouslyQueued={2} CanExecute={3} Queued={4}",
+            task.Id, task.Status, taskWasPreviouslyQueued, canExecuteInline,
+            workerGroup.ExternalWorkItemCount);
+      }
+#endif
+      if (!canExecuteInline)
+        return false;
+
+      // If the task was previously queued, remove it from the queue
+      if (taskWasPreviouslyQueued)
+        canExecuteInline = TryDequeue(task);
+
+      if (!canExecuteInline) {
 #if DEBUG
         if (logger.IsEnabled(LogLevel.Trace))
-        {
-            logger.Trace(myId + " --> TryExecuteTaskInline Task Id={0} Status={1} PreviouslyQueued={2} CanExecute={3} Queued={4}",
-                         task.Id, task.Status, taskWasPreviouslyQueued, canExecuteInline, workerGroup.ExternalWorkItemCount);
-        }
+          logger.Trace(
+              myId +
+                  " <-X TryExecuteTaskInline Task Id={0} Status={1} Execute=No",
+              task.Id, task.Status);
 #endif
-        if (!canExecuteInline) return false;
-
-        // If the task was previously queued, remove it from the queue
-        if (taskWasPreviouslyQueued)
-            canExecuteInline = TryDequeue(task);
-
-
-        if (!canExecuteInline)
-        {
-#if DEBUG
-            if (logger.IsEnabled(LogLevel.Trace)) logger.Trace(myId + " <-X TryExecuteTaskInline Task Id={0} Status={1} Execute=No", task.Id, task.Status);
-#endif
-            return false;
-        }
+        return false;
+      }
 
 #if EXTRA_STATS
-        turnsExecutedStatistic.Increment();
+      turnsExecutedStatistic.Increment();
 #endif
 #if DEBUG
-        if (logger.IsEnabled(LogLevel.Trace)) logger.Trace(myId + " TryExecuteTaskInline Task Id={0} Thread={1} Execute=Yes", task.Id, Thread.CurrentThread.ManagedThreadId);
+      if (logger.IsEnabled(LogLevel.Trace))
+        logger.Trace(
+            myId + " TryExecuteTaskInline Task Id={0} Thread={1} Execute=Yes",
+            task.Id, Thread.CurrentThread.ManagedThreadId);
 #endif
-        // Try to run the task.
-        bool done = TryExecuteTask(task);
-        if (!done)
-        {
-            logger.Warn(ErrorCode.SchedulerTaskExecuteIncomplete3, "TryExecuteTaskInline: Incomplete base.TryExecuteTask for Task Id={0} with Status={1}",
-                        task.Id, task.Status);
-        }
+      // Try to run the task.
+      bool done = TryExecuteTask(task);
+      if (!done) {
+        logger.Warn(
+            ErrorCode.SchedulerTaskExecuteIncomplete3,
+            "TryExecuteTaskInline: Incomplete base.TryExecuteTask for Task Id={0} with Status={1}",
+            task.Id, task.Status);
+      }
 #if DEBUG
-        if (logger.IsEnabled(LogLevel.Trace)) logger.Trace(myId + " <-- TryExecuteTaskInline Task Id={0} Thread={1} Execute=Done Ok={2}", task.Id, Thread.CurrentThread.ManagedThreadId, done);
+      if (logger.IsEnabled(LogLevel.Trace))
+        logger.Trace(
+            myId +
+                " <-- TryExecuteTaskInline Task Id={0} Thread={1} Execute=Done Ok={2}",
+            task.Id, Thread.CurrentThread.ManagedThreadId, done);
 #endif
-        return done;
+      return done;
     }
 
-    public override string ToString()
-    {
-        return string.Format("{0}-{1}:Queued={2}", GetType().Name, myId, workerGroup.ExternalWorkItemCount);
+    public override string ToString() {
+      return string.Format("{0}-{1}:Queued={2}", GetType().Name, myId,
+                           workerGroup.ExternalWorkItemCount);
     }
-}
+  }
 }

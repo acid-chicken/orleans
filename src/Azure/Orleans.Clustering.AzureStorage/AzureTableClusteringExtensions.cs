@@ -7,10 +7,8 @@ using Orleans.Configuration;
 using Orleans.Messaging;
 using Orleans.Runtime.MembershipService;
 
-namespace Orleans.Hosting
-{
-public static class AzureTableClusteringExtensions
-{
+namespace Orleans.Hosting {
+  public static class AzureTableClusteringExtensions {
     /// <summary>
     /// Configures the silo to use Azure Storage for clustering.
     /// </summary>
@@ -25,19 +23,15 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static ISiloHostBuilder UseAzureStorageClustering(
         this ISiloHostBuilder builder,
-        Action<AzureStorageClusteringOptions> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
+        Action<AzureStorageClusteringOptions>configureOptions) {
+      return builder.ConfigureServices(services => {
+        if (configureOptions != null) {
+          services.Configure(configureOptions);
+        }
 
-            services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
+        services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
             .ConfigureFormatter<AzureStorageClusteringOptions>();
-        });
+      });
     }
 
     /// <summary>
@@ -54,15 +48,13 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static ISiloHostBuilder UseAzureStorageClustering(
         this ISiloHostBuilder builder,
-        Action<OptionsBuilder<AzureStorageClusteringOptions>> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            configureOptions?.Invoke(services.AddOptions<AzureStorageClusteringOptions>());
-            services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
+        Action<OptionsBuilder<AzureStorageClusteringOptions>>configureOptions) {
+      return builder.ConfigureServices(services => {
+        configureOptions?.Invoke(
+            services.AddOptions<AzureStorageClusteringOptions>());
+        services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
             .ConfigureFormatter<AzureStorageClusteringOptions>();
-        });
+      });
     }
 
     /// <summary>
@@ -79,19 +71,15 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static ISiloBuilder UseAzureStorageClustering(
         this ISiloBuilder builder,
-        Action<AzureStorageClusteringOptions> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
+        Action<AzureStorageClusteringOptions>configureOptions) {
+      return builder.ConfigureServices(services => {
+        if (configureOptions != null) {
+          services.Configure(configureOptions);
+        }
 
-            services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
+        services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
             .ConfigureFormatter<AzureStorageClusteringOptions>();
-        });
+      });
     }
 
     /// <summary>
@@ -108,15 +96,13 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static ISiloBuilder UseAzureStorageClustering(
         this ISiloBuilder builder,
-        Action<OptionsBuilder<AzureStorageClusteringOptions>> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            configureOptions?.Invoke(services.AddOptions<AzureStorageClusteringOptions>());
-            services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
+        Action<OptionsBuilder<AzureStorageClusteringOptions>>configureOptions) {
+      return builder.ConfigureServices(services => {
+        configureOptions?.Invoke(
+            services.AddOptions<AzureStorageClusteringOptions>());
+        services.AddSingleton<IMembershipTable, AzureBasedMembershipTable>()
             .ConfigureFormatter<AzureStorageClusteringOptions>();
-        });
+      });
     }
 
     /// <summary>
@@ -133,19 +119,15 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static IClientBuilder UseAzureStorageClustering(
         this IClientBuilder builder,
-        Action<AzureStorageGatewayOptions> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
+        Action<AzureStorageGatewayOptions>configureOptions) {
+      return builder.ConfigureServices(services => {
+        if (configureOptions != null) {
+          services.Configure(configureOptions);
+        }
 
-            services.AddSingleton<IGatewayListProvider, AzureGatewayListProvider>()
+        services.AddSingleton<IGatewayListProvider, AzureGatewayListProvider>()
             .ConfigureFormatter<AzureStorageGatewayOptions>();
-        });
+      });
     }
 
     /// <summary>
@@ -162,15 +144,13 @@ public static class AzureTableClusteringExtensions
     /// </returns>
     public static IClientBuilder UseAzureStorageClustering(
         this IClientBuilder builder,
-        Action<OptionsBuilder<AzureStorageGatewayOptions>> configureOptions)
-    {
-        return builder.ConfigureServices(
-                   services =>
-        {
-            configureOptions?.Invoke(services.AddOptions<AzureStorageGatewayOptions>());
-            services.AddSingleton<IGatewayListProvider, AzureGatewayListProvider>()
+        Action<OptionsBuilder<AzureStorageGatewayOptions>>configureOptions) {
+      return builder.ConfigureServices(services => {
+        configureOptions?.Invoke(
+            services.AddOptions<AzureStorageGatewayOptions>());
+        services.AddSingleton<IGatewayListProvider, AzureGatewayListProvider>()
             .ConfigureFormatter<AzureStorageGatewayOptions>();
-        });
+      });
     }
-}
+  }
 }

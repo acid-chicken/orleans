@@ -7,34 +7,32 @@ using System.Threading.Tasks;
 using Orleans.Concurrency;
 using Orleans.Runtime;
 
-namespace Orleans.Streams.Core
-{
-[Serializable]
-[Immutable]
-public class StreamSubscription
-{
-    public StreamSubscription(Guid subscriptionId, string streamProviderName, IStreamIdentity streamId, GrainId grainId)
-    {
-        this.SubscriptionId = subscriptionId;
-        this.StreamProviderName = streamProviderName;
-        this.StreamId = streamId;
-        this.GrainId = grainId;
+namespace Orleans.Streams.Core {
+  [Serializable]
+  [Immutable]
+  public class StreamSubscription {
+    public StreamSubscription(Guid subscriptionId, string streamProviderName,
+                              IStreamIdentity streamId, GrainId grainId) {
+      this.SubscriptionId = subscriptionId;
+      this.StreamProviderName = streamProviderName;
+      this.StreamId = streamId;
+      this.GrainId = grainId;
     }
     public Guid SubscriptionId {
-        get;
-        set;
+      get;
+      set;
     }
     public string StreamProviderName {
-        get;
-        set;
+      get;
+      set;
     }
     public IStreamIdentity StreamId {
-        get;
-        set;
+      get;
+      set;
     }
     public GrainId GrainId {
-        get;
-        set;
+      get;
+      set;
     }
-}
+  }
 }

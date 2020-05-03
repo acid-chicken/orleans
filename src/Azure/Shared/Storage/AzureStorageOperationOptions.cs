@@ -10,40 +10,40 @@ namespace Orleans.Streaming.AzureStorage
 namespace Orleans.Streaming.EventHubs
 #elif TESTER_AZUREUTILS
 namespace Orleans.Tests.AzureUtils
-#elif ORLEANS_HOSTING_CLOUDSERVICES // Temporary until azure silo/client is refactored
+#elif ORLEANS_HOSTING_CLOUDSERVICES // Temporary until azure silo/client is
+                                    // refactored
 namespace Orleans.Hosting.AzureCloudServices
 #elif ORLEANS_TRANSACTIONS
 namespace Orleans.Transactions.AzureStorage
 #elif ORLEANS_DIRECTORY
 namespace Orleans.GrainDirectory.AzureStorage
 #else
-// No default namespace intentionally to cause compile errors if something is not defined
+// No default namespace intentionally to cause compile errors if something is
+// not defined
 #endif
 {
-public abstract class AzureStorageOperationOptions
-{
+  public abstract class AzureStorageOperationOptions {
     /// <summary>
     /// Azure Storage Policy Options
     /// </summary>
-    public AzureStoragePolicyOptions StoragePolicyOptions {
-        get;
-    } = new AzureStoragePolicyOptions();
+    public AzureStoragePolicyOptions StoragePolicyOptions { get; }
+    = new AzureStoragePolicyOptions();
 
     /// <summary>
     /// Connection string for Azure Storage
     /// </summary>
     [RedactConnectionString]
     public string ConnectionString {
-        get;
-        set;
+      get;
+      set;
     }
 
     /// <summary>
     /// Table name for Azure Storage
     /// </summary>
     public abstract string TableName {
-        get;
-        set;
+      get;
+      set;
     }
-}
+  }
 }

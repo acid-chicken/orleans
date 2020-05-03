@@ -15,26 +15,24 @@ using Xunit.Abstractions;
 using Orleans.Internal;
 using Orleans.Clustering.AzureStorage;
 
-namespace Tester.AzureUtils
-{
-/// <summary>
-/// Tests for operation of Orleans SiloInstanceManager using AzureStore - Requires access to external Azure storage
-/// </summary>
-[TestCategory("Azure"), TestCategory("Storage")]
-public class SiloInstanceTableManagerTests : IClassFixture<SiloInstanceTableManagerTests.Fixture>, IDisposable
-{
-    public class Fixture : IDisposable
-    {
-        public ILoggerFactory LoggerFactory {
-            get;
-            set;
-        } =
-            TestingUtils.CreateDefaultLoggerFactory("SiloInstanceTableManagerTests.log");
+namespace Tester.AzureUtils {
+  /// <summary>
+  /// Tests for operation of Orleans SiloInstanceManager using AzureStore -
+  /// Requires access to external Azure storage
+  /// </summary>
+  [TestCategory("Azure"), TestCategory("Storage")]
+  public class SiloInstanceTableManagerTests
+      : IClassFixture<SiloInstanceTableManagerTests.Fixture>,
+        IDisposable {
+    public class Fixture : IDisposable {
+      public ILoggerFactory LoggerFactory {
+        get;
+        set;
+      }
+      = TestingUtils.CreateDefaultLoggerFactory(
+          "SiloInstanceTableManagerTests.log");
 
-        public void Dispose()
-        {
-            this.LoggerFactory.Dispose();
-        }
+      public void Dispose() { this.LoggerFactory.Dispose(); }
     }
 
     private string clusterId;
@@ -44,265 +42,289 @@ public class SiloInstanceTableManagerTests : IClassFixture<SiloInstanceTableMana
     private OrleansSiloInstanceManager manager;
     private readonly ITestOutputHelper output;
 
-    public SiloInstanceTableManagerTests(ITestOutputHelper output, Fixture fixture)
-    {
-        TestUtils.CheckForAzureStorage();
-        this.output = output;
-        this.clusterId = "test-" + Guid.NewGuid();
-        generation = SiloAddress.AllocateNewGeneration();
-        siloAddress = SiloAddressUtils.NewLocalSiloAddress(generation);
+    public SiloInstanceTableManagerTests(ITestOutputHelper output,
+                                         Fixture fixture) {
+      TestUtils.CheckForAzureStorage();
+      this.output = output;
+      this.clusterId = "test-" + Guid.NewGuid();
+      generation = SiloAddress.AllocateNewGeneration();
+      siloAddress = SiloAddressUtils.NewLocalSiloAddress(generation);
 
-        output.WriteLine("ClusterId={0} Generation={1}", this.clusterId, generation);
+      output.WriteLine("ClusterId={0} Generation={1}", this.clusterId,
+                       generation);
 
-        output.WriteLine("Initializing SiloInstanceManager");
-        manager = OrleansSiloInstanceManager.GetManager(
-                      this.clusterId,
-                      fixture.LoggerFactory,
-                      new AzureStorageClusteringOptions { ConnectionString = TestDefaultConfiguration.DataConnectionString, TableName = new AzureStorageClusteringOptions().TableName })
-                  .WaitForResultWithThrow(SiloInstanceTableTestConstants.Timeout);
+      output.WriteLine("Initializing SiloInstanceManager");
+      manager =
+          OrleansSiloInstanceManager
+              .GetManager(
+                  this.clusterId, fixture.LoggerFactory,
+                  new AzureStorageClusteringOptions{
+                      ConnectionString =
+                          TestDefaultConfiguration.DataConnectionString,
+                      TableName =
+                          new AzureStorageClusteringOptions().TableName})
+              .WaitForResultWithThrow(SiloInstanceTableTestConstants.Timeout);
     }
 
     // Use TestCleanup to run code after each test has run
-    public void Dispose()
-    {
-        if(manager != null && SiloInstanceTableTestConstants.DeleteEntriesAfterTest)
-        {
-            TimeSpan timeout = SiloInstanceTableTestConstants.Timeout;
+    public void Dispose() {
+      if (manager != null &&
+          SiloInstanceTableTestConstants.DeleteEntriesAfterTest) {
+        TimeSpan timeout = SiloInstanceTableTestConstants.Timeout;
 
-            output.WriteLine("TestCleanup Timeout={0}", timeout);
+        output.WriteLine("TestCleanup Timeout={0}", timeout);
 
-            manager.DeleteTableEntries(this.clusterId).WaitWithThrow(timeout);
+        manager.DeleteTableEntries(this.clusterId).WaitWithThrow(timeout);
 
-            output.WriteLine("TestCleanup -  Finished");
-            manager = null;
-        }
+        output.WriteLine("TestCleanup -  Finished");
+        manager = null;
+      }
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public void SiloInstanceTable_Op_RegisterSiloInstance()
-    {
+    public void
+    SiloInstanceTable_Op_RegisterSiloInstance() {
+      RegisterSiloInstance();
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task
+    SiloInstanceTable_Op_ActivateSiloInstance() {
+      RegisterSiloInstance();
+
+      await manager.ActivateSiloInstance(myEntry);
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task
+    SiloInstanceTable_Op_UnregisterSiloInstance() {
+      RegisterSiloInstance();
+
+      await manager.UnregisterSiloInstance(myEntry);
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task
+    SiloInstanceTable_Op_CleanDeadSiloInstance() {
+      // Register a silo entry
+      await manager.TryCreateTableVersionEntryAsync();
+      this.generation = 0;
+      RegisterSiloInstance();
+      // and mark it as dead
+      await manager.UnregisterSiloInstance(myEntry);
+
+      // Create new active entries
+      for (int i = 1; i < 5; i++) {
+        this.generation = i;
+        this.siloAddress = SiloAddressUtils.NewLocalSiloAddress(generation);
         RegisterSiloInstance();
+      }
+
+      await Task.Delay(TimeSpan.FromSeconds(3));
+
+      await manager.CleanupDefunctSiloEntries(DateTime.Now -
+                                              TimeSpan.FromSeconds(1));
+
+      var entries = await manager.FindAllSiloEntries();
+      Assert.Equal(5, entries.Count);
+      Assert.All(entries,
+                 e => Assert.NotEqual(
+                     SiloInstanceTableTestConstants.INSTANCE_STATUS_DEAD,
+                     e.Item1.Status));
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Op_ActivateSiloInstance()
-    {
-        RegisterSiloInstance();
+    public async Task
+    SiloInstanceTable_Op_CreateSiloEntryConditionally() {
+      bool didInsert =
+          await manager.TryCreateTableVersionEntryAsync().WithTimeout(
+              new Orleans.Clustering.AzureStorage.AzureStoragePolicyOptions()
+                  .OperationTimeout);
 
-        await manager.ActivateSiloInstance(myEntry);
+      Assert.True(didInsert, "Did insert");
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Op_UnregisterSiloInstance()
-    {
-        RegisterSiloInstance();
+    public async Task
+    SiloInstanceTable_Register_CheckData() {
+      const string testName = "SiloInstanceTable_Register_CheckData";
+      output.WriteLine("Start {0}", testName);
 
-        await manager.UnregisterSiloInstance(myEntry);
+      RegisterSiloInstance();
+
+      var data = await FindSiloEntry(siloAddress);
+      SiloInstanceTableEntry siloEntry = data.Item1;
+      string eTag = data.Item2;
+
+      Assert.NotNull(eTag);      // ETag should not be null
+      Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
+
+      Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_CREATED,
+                   siloEntry.Status);
+
+      CheckSiloInstanceTableEntry(myEntry, siloEntry);
+      output.WriteLine("End {0}", testName);
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Op_CleanDeadSiloInstance()
-    {
-        // Register a silo entry
-        await manager.TryCreateTableVersionEntryAsync();
-        this.generation = 0;
-        RegisterSiloInstance();
-        // and mark it as dead
-        await manager.UnregisterSiloInstance(myEntry);
+    public async Task
+    SiloInstanceTable_Activate_CheckData() {
+      RegisterSiloInstance();
 
-        // Create new active entries
-        for (int i = 1; i < 5; i++)
-        {
-            this.generation = i;
-            this.siloAddress = SiloAddressUtils.NewLocalSiloAddress(generation);
-            RegisterSiloInstance();
-        }
+      await manager.ActivateSiloInstance(myEntry);
 
-        await Task.Delay(TimeSpan.FromSeconds(3));
+      var data = await FindSiloEntry(siloAddress);
+      Assert.NotNull(data); // Data returned should not be null
 
-        await manager.CleanupDefunctSiloEntries(DateTime.Now - TimeSpan.FromSeconds(1));
+      SiloInstanceTableEntry siloEntry = data.Item1;
+      string eTag = data.Item2;
 
-        var entries = await manager.FindAllSiloEntries();
-        Assert.Equal(5, entries.Count);
-        Assert.All(entries, e => Assert.NotEqual(SiloInstanceTableTestConstants.INSTANCE_STATUS_DEAD, e.Item1.Status));
-    }
+      Assert.NotNull(eTag);      // ETag should not be null
+      Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
 
+      Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_ACTIVE,
+                   siloEntry.Status);
 
-    [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Op_CreateSiloEntryConditionally()
-    {
-        bool didInsert = await manager.TryCreateTableVersionEntryAsync()
-                         .WithTimeout(new Orleans.Clustering.AzureStorage.AzureStoragePolicyOptions().OperationTimeout);
-
-        Assert.True(didInsert, "Did insert");
+      CheckSiloInstanceTableEntry(myEntry, siloEntry);
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Register_CheckData()
-    {
-        const string testName = "SiloInstanceTable_Register_CheckData";
-        output.WriteLine("Start {0}", testName);
+    public async Task
+    SiloInstanceTable_Unregister_CheckData() {
+      RegisterSiloInstance();
 
-        RegisterSiloInstance();
+      await manager.UnregisterSiloInstance(myEntry);
 
-        var data = await FindSiloEntry(siloAddress);
-        SiloInstanceTableEntry siloEntry = data.Item1;
-        string eTag = data.Item2;
+      var data = await FindSiloEntry(siloAddress);
+      SiloInstanceTableEntry siloEntry = data.Item1;
+      string eTag = data.Item2;
 
-        Assert.NotNull(eTag); // ETag should not be null
-        Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
+      Assert.NotNull(eTag);      // ETag should not be null
+      Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
 
-        Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_CREATED, siloEntry.Status);
+      Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_DEAD,
+                   siloEntry.Status);
 
-        CheckSiloInstanceTableEntry(myEntry, siloEntry);
-        output.WriteLine("End {0}", testName);
+      CheckSiloInstanceTableEntry(myEntry, siloEntry);
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Activate_CheckData()
-    {
-        RegisterSiloInstance();
+    public async Task
+    SiloInstanceTable_FindAllGatewayProxyEndpoints() {
+      RegisterSiloInstance();
 
-        await manager.ActivateSiloInstance(myEntry);
+      var gateways = await manager.FindAllGatewayProxyEndpoints();
+      Assert.Equal(0,
+                   gateways.Count); // "Number of gateways before Silo.Activate"
 
-        var data = await FindSiloEntry(siloAddress);
-        Assert.NotNull(data); // Data returned should not be null
+      await manager.ActivateSiloInstance(myEntry);
 
-        SiloInstanceTableEntry siloEntry = data.Item1;
-        string eTag = data.Item2;
+      gateways = await manager.FindAllGatewayProxyEndpoints();
+      Assert.Equal(1,
+                   gateways.Count); // "Number of gateways after Silo.Activate"
 
-        Assert.NotNull(eTag); // ETag should not be null
-        Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
-
-        Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_ACTIVE, siloEntry.Status);
-
-        CheckSiloInstanceTableEntry(myEntry, siloEntry);
+      Uri myGateway = gateways.First();
+      Assert.Equal(myEntry.Address,
+                   myGateway.Host.ToString()); // "Gateway address"
+      Assert.Equal(myEntry.ProxyPort,
+                   myGateway.Port.ToString(
+                       CultureInfo.InvariantCulture)); // "Gateway port"
     }
 
     [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_Unregister_CheckData()
-    {
-        RegisterSiloInstance();
+    public void
+    SiloAddress_ToFrom_RowKey() {
+      string ipAddress = "1.2.3.4";
+      int port = 5555;
+      int generation = 6666;
 
-        await manager.UnregisterSiloInstance(myEntry);
+      IPAddress address = IPAddress.Parse(ipAddress);
+      IPEndPoint endpoint = new IPEndPoint(address, port);
+      SiloAddress siloAddress = SiloAddress.New(endpoint, generation);
 
-        var data = await FindSiloEntry(siloAddress);
-        SiloInstanceTableEntry siloEntry = data.Item1;
-        string eTag = data.Item2;
+      string MembershipRowKey =
+          SiloInstanceTableEntry.ConstructRowKey(siloAddress);
 
-        Assert.NotNull(eTag); // ETag should not be null
-        Assert.NotNull(siloEntry); // SiloInstanceTableEntry should not be null
+      output.WriteLine("SiloAddress = {0} Row Key string = {1}", siloAddress,
+                       MembershipRowKey);
 
-        Assert.Equal(SiloInstanceTableTestConstants.INSTANCE_STATUS_DEAD, siloEntry.Status);
+      SiloAddress fromRowKey =
+          SiloInstanceTableEntry.UnpackRowKey(MembershipRowKey);
 
-        CheckSiloInstanceTableEntry(myEntry, siloEntry);
+      output.WriteLine("SiloAddress result = {0} From Row Key string = {1}",
+                       fromRowKey, MembershipRowKey);
+
+      Assert.Equal(siloAddress, fromRowKey);
+      Assert.Equal(SiloInstanceTableEntry.ConstructRowKey(siloAddress),
+                   SiloInstanceTableEntry.ConstructRowKey(fromRowKey));
     }
 
-    [SkippableFact, TestCategory("Functional")]
-    public async Task SiloInstanceTable_FindAllGatewayProxyEndpoints()
-    {
-        RegisterSiloInstance();
+    private void RegisterSiloInstance() {
+      string partitionKey = this.clusterId;
+      string rowKey = SiloInstanceTableEntry.ConstructRowKey(siloAddress);
 
-        var gateways = await manager.FindAllGatewayProxyEndpoints();
-        Assert.Equal(0,  gateways.Count);  // "Number of gateways before Silo.Activate"
+      IPEndPoint myEndpoint = siloAddress.Endpoint;
 
-        await manager.ActivateSiloInstance(myEntry);
+      myEntry = new SiloInstanceTableEntry{
+          PartitionKey = partitionKey,
+          RowKey = rowKey,
 
-        gateways = await manager.FindAllGatewayProxyEndpoints();
-        Assert.Equal(1,  gateways.Count);  // "Number of gateways after Silo.Activate"
+          DeploymentId = this.clusterId,
+          Address = myEndpoint.Address.ToString(),
+          Port = myEndpoint.Port.ToString(CultureInfo.InvariantCulture),
+          Generation = generation.ToString(CultureInfo.InvariantCulture),
 
-        Uri myGateway = gateways.First();
-        Assert.Equal(myEntry.Address,  myGateway.Host.ToString());  // "Gateway address"
-        Assert.Equal(myEntry.ProxyPort,  myGateway.Port.ToString(CultureInfo.InvariantCulture));  // "Gateway port"
+          HostName = myEndpoint.Address.ToString(),
+          ProxyPort = "30000",
+
+          RoleName = "MyRole",
+          SiloName = "MyInstance",
+          UpdateZone = "0",
+          FaultZone = "0",
+          StartTime = LogFormatter.PrintDate(DateTime.UtcNow),
+      };
+
+      output.WriteLine("MyEntry={0}", myEntry);
+
+      manager.RegisterSiloInstance(myEntry);
     }
 
-    [SkippableFact, TestCategory("Functional")]
-    public void SiloAddress_ToFrom_RowKey()
-    {
-        string ipAddress = "1.2.3.4";
-        int port = 5555;
-        int generation = 6666;
+    private async Task<Tuple<SiloInstanceTableEntry, string>>
+    FindSiloEntry(SiloAddress siloAddr) {
+      string partitionKey = this.clusterId;
+      string rowKey = SiloInstanceTableEntry.ConstructRowKey(siloAddr);
 
-        IPAddress address = IPAddress.Parse(ipAddress);
-        IPEndPoint endpoint = new IPEndPoint(address, port);
-        SiloAddress siloAddress = SiloAddress.New(endpoint, generation);
+      output.WriteLine(
+          "FindSiloEntry for SiloAddress={0} PartitionKey={1} RowKey={2}",
+          siloAddr, partitionKey, rowKey);
 
-        string MembershipRowKey = SiloInstanceTableEntry.ConstructRowKey(siloAddress);
+      Tuple<SiloInstanceTableEntry, string>data =
+          await manager.ReadSingleTableEntryAsync(partitionKey, rowKey);
 
-        output.WriteLine("SiloAddress = {0} Row Key string = {1}", siloAddress, MembershipRowKey);
-
-        SiloAddress fromRowKey = SiloInstanceTableEntry.UnpackRowKey(MembershipRowKey);
-
-        output.WriteLine("SiloAddress result = {0} From Row Key string = {1}", fromRowKey, MembershipRowKey);
-
-        Assert.Equal(siloAddress,  fromRowKey);
-        Assert.Equal(SiloInstanceTableEntry.ConstructRowKey(siloAddress), SiloInstanceTableEntry.ConstructRowKey(fromRowKey));
+      output.WriteLine("FindSiloEntry returning Data={0}", data);
+      return data;
     }
 
-    private void RegisterSiloInstance()
-    {
-        string partitionKey = this.clusterId;
-        string rowKey = SiloInstanceTableEntry.ConstructRowKey(siloAddress);
+    private void
+    CheckSiloInstanceTableEntry(SiloInstanceTableEntry referenceEntry,
+                                SiloInstanceTableEntry entry) {
+      Assert.Equal(referenceEntry.DeploymentId, entry.DeploymentId);
+      Assert.Equal(referenceEntry.Address, entry.Address);
+      Assert.Equal(referenceEntry.Port, entry.Port);
+      Assert.Equal(referenceEntry.Generation, entry.Generation);
+      Assert.Equal(referenceEntry.HostName, entry.HostName);
+      // Assert.Equal(referenceEntry.Status, entry.Status);
+      Assert.Equal(referenceEntry.ProxyPort, entry.ProxyPort);
+      Assert.Equal(referenceEntry.RoleName, entry.RoleName);
+      Assert.Equal(referenceEntry.SiloName, entry.SiloName);
+      Assert.Equal(referenceEntry.UpdateZone, entry.UpdateZone);
+      Assert.Equal(referenceEntry.FaultZone, entry.FaultZone);
+      Assert.Equal(referenceEntry.StartTime, entry.StartTime);
+      Assert.Equal(referenceEntry.IAmAliveTime, entry.IAmAliveTime);
+      Assert.Equal(referenceEntry.MembershipVersion, entry.MembershipVersion);
 
-        IPEndPoint myEndpoint = siloAddress.Endpoint;
-
-        myEntry = new SiloInstanceTableEntry
-        {
-            PartitionKey = partitionKey,
-            RowKey = rowKey,
-
-            DeploymentId = this.clusterId,
-            Address = myEndpoint.Address.ToString(),
-            Port = myEndpoint.Port.ToString(CultureInfo.InvariantCulture),
-            Generation = generation.ToString(CultureInfo.InvariantCulture),
-
-            HostName = myEndpoint.Address.ToString(),
-            ProxyPort = "30000",
-
-            RoleName = "MyRole",
-            SiloName = "MyInstance",
-            UpdateZone = "0",
-            FaultZone = "0",
-            StartTime = LogFormatter.PrintDate(DateTime.UtcNow),
-        };
-
-        output.WriteLine("MyEntry={0}", myEntry);
-
-        manager.RegisterSiloInstance(myEntry);
+      Assert.Equal(referenceEntry.SuspectingTimes, entry.SuspectingTimes);
+      Assert.Equal(referenceEntry.SuspectingSilos, entry.SuspectingSilos);
     }
-
-    private async Task<Tuple<SiloInstanceTableEntry, string>> FindSiloEntry(SiloAddress siloAddr)
-    {
-        string partitionKey = this.clusterId;
-        string rowKey = SiloInstanceTableEntry.ConstructRowKey(siloAddr);
-
-        output.WriteLine("FindSiloEntry for SiloAddress={0} PartitionKey={1} RowKey={2}", siloAddr, partitionKey, rowKey);
-
-        Tuple<SiloInstanceTableEntry, string> data = await manager.ReadSingleTableEntryAsync(partitionKey, rowKey);
-
-        output.WriteLine("FindSiloEntry returning Data={0}", data);
-        return data;
-    }
-
-    private void CheckSiloInstanceTableEntry(SiloInstanceTableEntry referenceEntry, SiloInstanceTableEntry entry)
-    {
-        Assert.Equal(referenceEntry.DeploymentId, entry.DeploymentId);
-        Assert.Equal(referenceEntry.Address, entry.Address);
-        Assert.Equal(referenceEntry.Port, entry.Port);
-        Assert.Equal(referenceEntry.Generation,  entry.Generation);
-        Assert.Equal(referenceEntry.HostName, entry.HostName);
-        //Assert.Equal(referenceEntry.Status, entry.Status);
-        Assert.Equal(referenceEntry.ProxyPort, entry.ProxyPort);
-        Assert.Equal(referenceEntry.RoleName, entry.RoleName);
-        Assert.Equal(referenceEntry.SiloName, entry.SiloName);
-        Assert.Equal(referenceEntry.UpdateZone, entry.UpdateZone);
-        Assert.Equal(referenceEntry.FaultZone, entry.FaultZone);
-        Assert.Equal(referenceEntry.StartTime, entry.StartTime);
-        Assert.Equal(referenceEntry.IAmAliveTime, entry.IAmAliveTime);
-        Assert.Equal(referenceEntry.MembershipVersion, entry.MembershipVersion);
-
-        Assert.Equal(referenceEntry.SuspectingTimes, entry.SuspectingTimes);
-        Assert.Equal(referenceEntry.SuspectingSilos, entry.SuspectingSilos);
-    }
-}
+  }
 }
