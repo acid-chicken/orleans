@@ -67,10 +67,7 @@
       "article": "a",
       "category": "key",
       "foundIn": 2,
-      "commands": [
-        "lock",
-        "unlock"
-      ]
+      "commands": ["lock", "unlock"]
     },
     {
       "id": 1,
@@ -78,9 +75,7 @@
       "article": "a",
       "category": "weapon",
       "foundIn": 3,
-      "commands": [
-        "kill"
-      ]
+      "commands": ["kill"]
     },
     {
       "id": 2,
@@ -88,9 +83,7 @@
       "article": "a",
       "category": "food",
       "foundIn": 4,
-      "commands": [
-        "eat"
-      ]
+      "commands": ["eat"]
     },
     {
       "id": 3,
@@ -98,25 +91,19 @@
       "article": "a",
       "category": "beverage",
       "foundIn": 4,
-      "commands": [
-        "drink"
-      ]
+      "commands": ["drink"]
     }
   ],
   "monsters": [
     {
       "id": 0,
       "name": "An Angry Customer",
-      "killedBy": [
-        1
-      ]
+      "killedBy": [1]
     },
     {
       "id": 1,
       "name": "The Wicked Witch of the East",
-      "killedBy": [
-        3
-      ]
+      "killedBy": [3]
     }
   ]
 }
