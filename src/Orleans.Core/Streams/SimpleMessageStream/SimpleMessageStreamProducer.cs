@@ -9,167 +9,173 @@ using Microsoft.Extensions.Logging;
 
 namespace Orleans.Providers.Streams.SimpleMessageStream
 {
-    internal class SimpleMessageStreamProducer<T> : IInternalAsyncBatchObserver<T>
+internal class SimpleMessageStreamProducer<T> : IInternalAsyncBatchObserver<T>
+{
+    private readonly StreamImpl<T>                  stream;
+    private readonly string                         streamProviderName;
+
+    [NonSerialized]
+    private readonly SerializationManager serializationManager;
+
+    [NonSerialized]
+    private readonly IStreamPubSub                  pubSub;
+
+    [NonSerialized]
+    private readonly IStreamProviderRuntime         providerRuntime;
+    private SimpleMessageStreamProducerExtension    myExtension;
+    private IStreamProducerExtension                myGrainReference;
+    private bool                                    connectedToRendezvous;
+    private readonly bool                           fireAndForgetDelivery;
+    private readonly bool                           optimizeForImmutableData;
+    [NonSerialized]
+    private bool                                    isDisposed;
+    [NonSerialized]
+    private readonly ILogger                         logger;
+    [NonSerialized]
+    private readonly AsyncLock                      initLock;
+    internal bool IsRewindable {
+        get;
+        private set;
+    }
+
+    internal SimpleMessageStreamProducer(
+        StreamImpl<T> stream,
+        string streamProviderName,
+        IStreamProviderRuntime providerUtilities,
+        bool fireAndForgetDelivery,
+        bool optimizeForImmutableData,
+        IStreamPubSub pubSub,
+        bool isRewindable,
+        SerializationManager serializationManager,
+        ILogger<SimpleMessageStreamProducer<T>> logger)
     {
-        private readonly StreamImpl<T>                  stream;
-        private readonly string                         streamProviderName;
+        this.stream = stream;
+        this.streamProviderName = streamProviderName;
+        providerRuntime = providerUtilities;
+        this.pubSub = pubSub;
+        this.serializationManager = serializationManager;
+        connectedToRendezvous = false;
+        this.fireAndForgetDelivery = fireAndForgetDelivery;
+        this.optimizeForImmutableData = optimizeForImmutableData;
+        IsRewindable = isRewindable;
+        isDisposed = false;
+        initLock = new AsyncLock();
+        this.logger = logger;
+        ConnectToRendezvous().Ignore();
+    }
 
-        [NonSerialized]
-        private readonly SerializationManager serializationManager;
+    private async Task<ISet<PubSubSubscriptionState>> RegisterProducer()
+    {
+        var tup = await providerRuntime.BindExtension<SimpleMessageStreamProducerExtension, IStreamProducerExtension>(
+                      () => new SimpleMessageStreamProducerExtension(providerRuntime, pubSub, this.logger, fireAndForgetDelivery, optimizeForImmutableData));
 
-        [NonSerialized]
-        private readonly IStreamPubSub                  pubSub;
+        myExtension = tup.Item1;
+        myGrainReference = tup.Item2;
 
-        [NonSerialized]
-        private readonly IStreamProviderRuntime         providerRuntime;
-        private SimpleMessageStreamProducerExtension    myExtension;
-        private IStreamProducerExtension                myGrainReference;
-        private bool                                    connectedToRendezvous;
-        private readonly bool                           fireAndForgetDelivery;
-        private readonly bool                           optimizeForImmutableData;
-        [NonSerialized]
-        private bool                                    isDisposed;
-        [NonSerialized]
-        private readonly ILogger                         logger;
-        [NonSerialized]
-        private readonly AsyncLock                      initLock;
-        internal bool IsRewindable { get; private set; }
+        myExtension.AddStream(stream.StreamId);
 
-        internal SimpleMessageStreamProducer(
-            StreamImpl<T> stream,
-            string streamProviderName,
-            IStreamProviderRuntime providerUtilities,
-            bool fireAndForgetDelivery,
-            bool optimizeForImmutableData,
-            IStreamPubSub pubSub,
-            bool isRewindable,
-            SerializationManager serializationManager,
-            ILogger<SimpleMessageStreamProducer<T>> logger)
+        // Notify streamRendezvous about new stream streamProducer. Retreave the list of RemoteSubscribers.
+        return await pubSub.RegisterProducer(stream.StreamId, streamProviderName, myGrainReference);
+    }
+
+    private async Task ConnectToRendezvous()
+    {
+        if (isDisposed)
+            throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "ConnectToRendezvous"));
+
+        // the caller should check _connectedToRendezvous before calling this method.
+        using (await initLock.LockAsync())
         {
-            this.stream = stream;
-            this.streamProviderName = streamProviderName;
-            providerRuntime = providerUtilities;
-            this.pubSub = pubSub;
-            this.serializationManager = serializationManager;
-            connectedToRendezvous = false;
-            this.fireAndForgetDelivery = fireAndForgetDelivery;
-            this.optimizeForImmutableData = optimizeForImmutableData;
-            IsRewindable = isRewindable;
-            isDisposed = false;
-            initLock = new AsyncLock();
-            this.logger = logger;
-            ConnectToRendezvous().Ignore();
-        }
-
-        private async Task<ISet<PubSubSubscriptionState>> RegisterProducer()
-        {
-            var tup = await providerRuntime.BindExtension<SimpleMessageStreamProducerExtension, IStreamProducerExtension>(
-                () => new SimpleMessageStreamProducerExtension(providerRuntime, pubSub, this.logger, fireAndForgetDelivery, optimizeForImmutableData));
-
-            myExtension = tup.Item1;
-            myGrainReference = tup.Item2;
-
-            myExtension.AddStream(stream.StreamId);
-
-            // Notify streamRendezvous about new stream streamProducer. Retreave the list of RemoteSubscribers.
-            return await pubSub.RegisterProducer(stream.StreamId, streamProviderName, myGrainReference);
-        }
-
-        private async Task ConnectToRendezvous()
-        {
-            if (isDisposed)
-                throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "ConnectToRendezvous"));
-
-            // the caller should check _connectedToRendezvous before calling this method.
-            using (await initLock.LockAsync())
+            if (!connectedToRendezvous) // need to re-check again.
             {
-                if (!connectedToRendezvous) // need to re-check again.
-                {
-                    var remoteSubscribers = await RegisterProducer();
-                    myExtension.AddSubscribers(stream.StreamId, remoteSubscribers);
-                    connectedToRendezvous = true;
-                }
+                var remoteSubscribers = await RegisterProducer();
+                myExtension.AddSubscribers(stream.StreamId, remoteSubscribers);
+                connectedToRendezvous = true;
             }
-        }
-
-        public async Task OnNextAsync(T item, StreamSequenceToken token)
-        {
-            if (token != null && !IsRewindable)
-                throw new ArgumentNullException("token", "Passing a non-null token to a non-rewindable IAsyncBatchObserver.");
-            
-
-            if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnNextAsync"));
-
-            if (!connectedToRendezvous)
-            {
-                if (!this.optimizeForImmutableData)
-                {
-                    // In order to avoid potential concurrency errors, synchronously copy the input before yielding the
-                    // thread. DeliverItem below must also be take care to avoid yielding before copying for non-immutable objects.
-                    item = (T) this.serializationManager.DeepCopy(item);
-                }
-
-                await ConnectToRendezvous();
-            }
-
-            await myExtension.DeliverItem(stream.StreamId, item);
-        }
-
-        public Task OnNextBatchAsync(IEnumerable<T> batch, StreamSequenceToken token)
-        {
-            if (token != null && !IsRewindable) throw new ArgumentNullException("token", "Passing a non-null token to a non-rewindable IAsyncBatchObserver.");
-            
-            throw new NotImplementedException("We still don't support OnNextBatchAsync()");
-        }
-
-        public async Task OnCompletedAsync()
-        {
-            if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnCompletedAsync"));
-
-            if (!connectedToRendezvous)
-                await ConnectToRendezvous();
-
-            await myExtension.CompleteStream(stream.StreamId);
-        }
-
-        public async Task OnErrorAsync(Exception exc)
-        {
-            if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnErrorAsync"));
-
-            if (!connectedToRendezvous)
-                await ConnectToRendezvous();
-
-            await myExtension.ErrorInStream(stream.StreamId, exc);
-        }
-
-        internal Action OnDisposeTestHook { get; set; }
-
-        public async Task Cleanup()
-        {
-            if(logger.IsEnabled(LogLevel.Debug)) logger.Debug("Cleanup() called");
-
-            myExtension.RemoveStream(stream.StreamId);
-
-            if (isDisposed) return;
-
-            if (connectedToRendezvous)
-            {
-                try
-                {
-                    await pubSub.UnregisterProducer(stream.StreamId, streamProviderName, myGrainReference);
-                    connectedToRendezvous = false;
-                }
-                catch (Exception exc)
-                {
-                    logger.Warn((int) ErrorCode.StreamProvider_ProducerFailedToUnregister,
-                        "Ignoring unhandled exception during PubSub.UnregisterProducer", exc);
-                }
-            }
-            isDisposed = true;
-
-            Action onDisposeTestHook = OnDisposeTestHook; // capture
-            if (onDisposeTestHook != null)
-                onDisposeTestHook();
         }
     }
+
+    public async Task OnNextAsync(T item, StreamSequenceToken token)
+    {
+        if (token != null && !IsRewindable)
+            throw new ArgumentNullException("token", "Passing a non-null token to a non-rewindable IAsyncBatchObserver.");
+
+
+        if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnNextAsync"));
+
+        if (!connectedToRendezvous)
+        {
+            if (!this.optimizeForImmutableData)
+            {
+                // In order to avoid potential concurrency errors, synchronously copy the input before yielding the
+                // thread. DeliverItem below must also be take care to avoid yielding before copying for non-immutable objects.
+                item = (T) this.serializationManager.DeepCopy(item);
+            }
+
+            await ConnectToRendezvous();
+        }
+
+        await myExtension.DeliverItem(stream.StreamId, item);
+    }
+
+    public Task OnNextBatchAsync(IEnumerable<T> batch, StreamSequenceToken token)
+    {
+        if (token != null && !IsRewindable) throw new ArgumentNullException("token", "Passing a non-null token to a non-rewindable IAsyncBatchObserver.");
+
+        throw new NotImplementedException("We still don't support OnNextBatchAsync()");
+    }
+
+    public async Task OnCompletedAsync()
+    {
+        if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnCompletedAsync"));
+
+        if (!connectedToRendezvous)
+            await ConnectToRendezvous();
+
+        await myExtension.CompleteStream(stream.StreamId);
+    }
+
+    public async Task OnErrorAsync(Exception exc)
+    {
+        if (isDisposed) throw new ObjectDisposedException(string.Format("{0}-{1}", GetType(), "OnErrorAsync"));
+
+        if (!connectedToRendezvous)
+            await ConnectToRendezvous();
+
+        await myExtension.ErrorInStream(stream.StreamId, exc);
+    }
+
+    internal Action OnDisposeTestHook {
+        get;
+        set;
+    }
+
+    public async Task Cleanup()
+    {
+        if(logger.IsEnabled(LogLevel.Debug)) logger.Debug("Cleanup() called");
+
+        myExtension.RemoveStream(stream.StreamId);
+
+        if (isDisposed) return;
+
+        if (connectedToRendezvous)
+        {
+            try
+            {
+                await pubSub.UnregisterProducer(stream.StreamId, streamProviderName, myGrainReference);
+                connectedToRendezvous = false;
+            }
+            catch (Exception exc)
+            {
+                logger.Warn((int) ErrorCode.StreamProvider_ProducerFailedToUnregister,
+                            "Ignoring unhandled exception during PubSub.UnregisterProducer", exc);
+            }
+        }
+        isDisposed = true;
+
+        Action onDisposeTestHook = OnDisposeTestHook; // capture
+        if (onDisposeTestHook != null)
+            onDisposeTestHook();
+    }
+}
 }

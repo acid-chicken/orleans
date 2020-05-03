@@ -20,22 +20,30 @@ namespace Orleans.GrainDirectory.AzureStorage
 // No default namespace intentionally to cause compile errors if something is not defined
 #endif
 {
-    public abstract class AzureStorageOperationOptions
-    {
-        /// <summary>
-        /// Azure Storage Policy Options
-        /// </summary>
-        public AzureStoragePolicyOptions StoragePolicyOptions { get; } = new AzureStoragePolicyOptions();
-        
-        /// <summary>
-        /// Connection string for Azure Storage
-        /// </summary>
-        [RedactConnectionString]
-        public string ConnectionString { get; set; }
+public abstract class AzureStorageOperationOptions
+{
+    /// <summary>
+    /// Azure Storage Policy Options
+    /// </summary>
+    public AzureStoragePolicyOptions StoragePolicyOptions {
+        get;
+    } = new AzureStoragePolicyOptions();
 
-        /// <summary>
-        /// Table name for Azure Storage
-        /// </summary>
-        public abstract string TableName { get; set; }
+    /// <summary>
+    /// Connection string for Azure Storage
+    /// </summary>
+    [RedactConnectionString]
+    public string ConnectionString {
+        get;
+        set;
     }
+
+    /// <summary>
+    /// Table name for Azure Storage
+    /// </summary>
+    public abstract string TableName {
+        get;
+        set;
+    }
+}
 }

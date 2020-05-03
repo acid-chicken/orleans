@@ -14,69 +14,69 @@ using Orleans.Reminders.AzureStorage;
 
 namespace UnitTests.RemindersTest
 {
-    /// <summary>
-    /// Tests for operation of Orleans Reminders Table using Azure
-    /// </summary>
-    [TestCategory("Reminders"), TestCategory("Azure")]
-    public class AzureRemindersTableTests : ReminderTableTestsBase, IClassFixture<Tester.AzureUtils.AzureStorageBasicTests>
+/// <summary>
+/// Tests for operation of Orleans Reminders Table using Azure
+/// </summary>
+[TestCategory("Reminders"), TestCategory("Azure")]
+public class AzureRemindersTableTests : ReminderTableTestsBase, IClassFixture<Tester.AzureUtils.AzureStorageBasicTests>
+{
+    public AzureRemindersTableTests(ConnectionStringFixture fixture, TestEnvironmentFixture environment) : base(fixture, environment, CreateFilters())
     {
-        public AzureRemindersTableTests(ConnectionStringFixture fixture, TestEnvironmentFixture environment) : base(fixture, environment, CreateFilters())
-        {
-        }
-
-        private static LoggerFilterOptions CreateFilters()
-        {
-            var filters = new LoggerFilterOptions();
-            filters.AddFilter("AzureTableDataManager", LogLevel.Trace);
-            filters.AddFilter("OrleansSiloInstanceManager", LogLevel.Trace);
-            filters.AddFilter("Storage", LogLevel.Trace);
-            return filters;
-        }
-
-        public override Task DisposeAsync()
-        {
-            // Reset init timeout after tests
-            return base.DisposeAsync();
-        }
-
-        protected override IReminderTable CreateRemindersTable()
-        {
-            TestUtils.CheckForAzureStorage();
-            var options = new OptionsWrapper<AzureTableReminderStorageOptions>(
-                new AzureTableReminderStorageOptions
-                    {
-                        ConnectionString = this.connectionStringFixture.ConnectionString
-                    });
-            return new AzureBasedReminderTable(this.ClusterFixture.Services.GetRequiredService<IGrainReferenceConverter>(), loggerFactory, this.clusterOptions, options);
-        }
-
-        protected override Task<string> GetConnectionString()
-        {
-            TestUtils.CheckForAzureStorage();
-            return Task.FromResult(TestDefaultConfiguration.DataConnectionString);
-        }
-
-        [SkippableFact]
-        public void RemindersTable_Azure_Init()
-        {
-        }
-
-        [SkippableFact, TestCategory("Functional")]
-        public async Task RemindersTable_Azure_RemindersRange()
-        {
-            await RemindersRange(50);
-        }
-
-        [SkippableFact, TestCategory("Functional")]
-        public async Task RemindersTable_Azure_RemindersParallelUpsert()
-        {
-            await RemindersParallelUpsert();
-        }
-
-        [SkippableFact, TestCategory("Functional")]
-        public async Task RemindersTable_Azure_ReminderSimple()
-        {
-            await ReminderSimple();
-        }
     }
+
+    private static LoggerFilterOptions CreateFilters()
+    {
+        var filters = new LoggerFilterOptions();
+        filters.AddFilter("AzureTableDataManager", LogLevel.Trace);
+        filters.AddFilter("OrleansSiloInstanceManager", LogLevel.Trace);
+        filters.AddFilter("Storage", LogLevel.Trace);
+        return filters;
+    }
+
+    public override Task DisposeAsync()
+    {
+        // Reset init timeout after tests
+        return base.DisposeAsync();
+    }
+
+    protected override IReminderTable CreateRemindersTable()
+    {
+        TestUtils.CheckForAzureStorage();
+        var options = new OptionsWrapper<AzureTableReminderStorageOptions>(
+            new AzureTableReminderStorageOptions
+        {
+            ConnectionString = this.connectionStringFixture.ConnectionString
+        });
+        return new AzureBasedReminderTable(this.ClusterFixture.Services.GetRequiredService<IGrainReferenceConverter>(), loggerFactory, this.clusterOptions, options);
+    }
+
+    protected override Task<string> GetConnectionString()
+    {
+        TestUtils.CheckForAzureStorage();
+        return Task.FromResult(TestDefaultConfiguration.DataConnectionString);
+    }
+
+    [SkippableFact]
+    public void RemindersTable_Azure_Init()
+    {
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task RemindersTable_Azure_RemindersRange()
+    {
+        await RemindersRange(50);
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task RemindersTable_Azure_RemindersParallelUpsert()
+    {
+        await RemindersParallelUpsert();
+    }
+
+    [SkippableFact, TestCategory("Functional")]
+    public async Task RemindersTable_Azure_ReminderSimple()
+    {
+        await ReminderSimple();
+    }
+}
 }

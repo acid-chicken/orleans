@@ -6,39 +6,42 @@ using Orleans.Runtime;
 
 namespace Orleans.Configuration
 {
-    public class AzureTableGrainDirectoryOptions : AzureStorageOperationOptions
+public class AzureTableGrainDirectoryOptions : AzureStorageOperationOptions
+{
+    /// <summary>
+    /// Table name for Azure Storage
+    /// </summary>
+    public override string TableName {
+        get;
+        set;
+    } = DEFAULT_TABLE_NAME;
+    public const string DEFAULT_TABLE_NAME = "GrainDirectory";
+}
+
+public class AzureTableGrainDirectoryOptionsValidator : IConfigurationValidator
+{
+    private AzureTableGrainDirectoryOptions options;
+
+    public AzureTableGrainDirectoryOptionsValidator(AzureTableGrainDirectoryOptions options)
     {
-        /// <summary>
-        /// Table name for Azure Storage
-        /// </summary>
-        public override string TableName { get; set; } = DEFAULT_TABLE_NAME;
-        public const string DEFAULT_TABLE_NAME = "GrainDirectory";
+        this.options = options;
     }
 
-    public class AzureTableGrainDirectoryOptionsValidator : IConfigurationValidator
+    public void ValidateConfiguration()
     {
-        private AzureTableGrainDirectoryOptions options;
+        if (!CloudStorageAccount.TryParse(this.options.ConnectionString, out var ignore))
+            throw new OrleansConfigurationException(
+                $"Configuration for AzureTableGrainDirectoryOptions is invalid. {nameof(this.options.ConnectionString)} is not valid.");
 
-        public AzureTableGrainDirectoryOptionsValidator(AzureTableGrainDirectoryOptions options)
+        try
         {
-            this.options = options;
+            AzureTableUtils.ValidateTableName(this.options.TableName);
         }
-
-        public void ValidateConfiguration()
+        catch (Exception ex)
         {
-            if (!CloudStorageAccount.TryParse(this.options.ConnectionString, out var ignore))
-                throw new OrleansConfigurationException(
-                    $"Configuration for AzureTableGrainDirectoryOptions is invalid. {nameof(this.options.ConnectionString)} is not valid.");
-
-            try
-            {
-                AzureTableUtils.ValidateTableName(this.options.TableName);
-            }
-            catch (Exception ex)
-            {
-                throw new OrleansConfigurationException(
-                    $"Configuration for AzureTableGrainDirectoryOptions is invalid. {nameof(this.options.TableName)} is not valid.", ex);
-            }
+            throw new OrleansConfigurationException(
+                $"Configuration for AzureTableGrainDirectoryOptions is invalid. {nameof(this.options.TableName)} is not valid.", ex);
         }
     }
+}
 }

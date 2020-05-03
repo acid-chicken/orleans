@@ -6,14 +6,14 @@ using Orleans;
 
 namespace UnitTests.GrainInterfaces.Directories
 {
-    public interface ICommonDirectoryGrain : IGrainWithGuidKey
-    {
-        Task<int> Ping();
+public interface ICommonDirectoryGrain : IGrainWithGuidKey
+{
+    Task<int> Ping();
 
-        Task Reset();
+    Task Reset();
 
-        Task<string> GetRuntimeInstanceId();
+    Task<string> GetRuntimeInstanceId();
 
-        Task<int> ProxyPing(ICommonDirectoryGrain grain);
-    }
+    Task<int> ProxyPing(ICommonDirectoryGrain grain);
+}
 }

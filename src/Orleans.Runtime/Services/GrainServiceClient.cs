@@ -7,60 +7,60 @@ using Orleans.Services;
 
 namespace Orleans.Runtime.Services
 {
+/// <summary>
+/// Proxies requests to the appropriate GrainService based on the appropriate Ring partitioning strategy.
+/// </summary>
+/// <typeparam name="TGrainService"></typeparam>
+public abstract class GrainServiceClient<TGrainService> : IGrainServiceClient<TGrainService> where TGrainService : IGrainService
+{
+    private readonly ISiloRuntimeClient runtimeClient;
+    private readonly IInternalGrainFactory grainFactory;
+    private readonly IConsistentRingProvider ringProvider;
+    private readonly int grainTypeCode;
+
     /// <summary>
-    /// Proxies requests to the appropriate GrainService based on the appropriate Ring partitioning strategy.
+    /// Currently we only support a single GrainService per Silo, when multiple are supported we will request the number of GrainServices to partition per silo here.
     /// </summary>
-    /// <typeparam name="TGrainService"></typeparam>
-    public abstract class GrainServiceClient<TGrainService> : IGrainServiceClient<TGrainService> where TGrainService : IGrainService
+    protected GrainServiceClient(IServiceProvider serviceProvider)
     {
-        private readonly ISiloRuntimeClient runtimeClient;
-        private readonly IInternalGrainFactory grainFactory;
-        private readonly IConsistentRingProvider ringProvider;
-        private readonly int grainTypeCode;
+        runtimeClient =  serviceProvider.GetRequiredService<ISiloRuntimeClient>();
+        grainFactory = serviceProvider.GetRequiredService<IInternalGrainFactory>();
+        ringProvider = serviceProvider.GetRequiredService<IConsistentRingProvider>();
 
-        /// <summary>
-        /// Currently we only support a single GrainService per Silo, when multiple are supported we will request the number of GrainServices to partition per silo here.
-        /// </summary>
-        protected GrainServiceClient(IServiceProvider serviceProvider)
+        // GrainInterfaceMap only holds IGrain types, not ISystemTarget types, so resolved via Orleans.CodeGeneration.
+        // Resolve this before merge.
+        grainTypeCode = GrainInterfaceUtils.GetGrainClassTypeCode(typeof(TGrainService));
+    }
+
+    /// <summary>
+    /// Resolves the correct GrainService responsible for actioning the request based on the CallingGrainReference
+    /// </summary>
+    protected TGrainService GrainService
+    {
+        get
         {
-            runtimeClient =  serviceProvider.GetRequiredService<ISiloRuntimeClient>();
-            grainFactory = serviceProvider.GetRequiredService<IInternalGrainFactory>();
-            ringProvider = serviceProvider.GetRequiredService<IConsistentRingProvider>();
+            var destination = MapGrainReferenceToSiloRing(CallingGrainReference);
+            var grainId = SystemTargetGrainId.CreateGrainServiceGrainId(grainTypeCode, null, destination);
+            var grainService = grainFactory.GetSystemTarget<TGrainService>(grainId);
 
-            // GrainInterfaceMap only holds IGrain types, not ISystemTarget types, so resolved via Orleans.CodeGeneration.
-            // Resolve this before merge.
-            grainTypeCode = GrainInterfaceUtils.GetGrainClassTypeCode(typeof(TGrainService));
-        }
-
-        /// <summary>
-        /// Resolves the correct GrainService responsible for actioning the request based on the CallingGrainReference
-        /// </summary>
-        protected TGrainService GrainService
-        {
-            get
-            {
-                var destination = MapGrainReferenceToSiloRing(CallingGrainReference);
-                var grainId = SystemTargetGrainId.CreateGrainServiceGrainId(grainTypeCode, null, destination);
-                var grainService = grainFactory.GetSystemTarget<TGrainService>(grainId);
-
-                return grainService;
-            }
-        }
-
-        /// <summary>
-        /// Resolves the Grain Reference invoking this request.
-        /// </summary>
-        protected GrainReference CallingGrainReference => RuntimeContext.CurrentGrainContext?.GrainReference;
-
-        /// <summary>
-        /// Moved from InsideRuntimeClient.cs
-        /// </summary>
-        /// <param name="grainRef"></param>
-        /// <returns></returns>
-        private SiloAddress MapGrainReferenceToSiloRing(GrainReference grainRef)
-        {
-            var hashCode = grainRef.GetUniformHashCode();
-            return ringProvider.GetPrimaryTargetSilo(hashCode);
+            return grainService;
         }
     }
+
+    /// <summary>
+    /// Resolves the Grain Reference invoking this request.
+    /// </summary>
+    protected GrainReference CallingGrainReference => RuntimeContext.CurrentGrainContext?.GrainReference;
+
+    /// <summary>
+    /// Moved from InsideRuntimeClient.cs
+    /// </summary>
+    /// <param name="grainRef"></param>
+    /// <returns></returns>
+    private SiloAddress MapGrainReferenceToSiloRing(GrainReference grainRef)
+    {
+        var hashCode = grainRef.GetUniformHashCode();
+        return ringProvider.GetPrimaryTargetSilo(hashCode);
+    }
+}
 }

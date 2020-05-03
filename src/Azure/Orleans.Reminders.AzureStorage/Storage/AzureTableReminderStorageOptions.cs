@@ -20,13 +20,16 @@ namespace Orleans.GrainDirectory.AzureStorage
 // No default namespace intentionally to cause compile errors if something is not defined
 #endif
 {
-    /// <summary>Options for Azure Table based reminder table.</summary>
-    public class AzureTableReminderStorageOptions : AzureStorageOperationOptions
-    {
-        /// <summary>
-        /// Table name for Azure Storage
-        /// </summary>
-        public override string TableName { get; set; } = DEFAULT_TABLE_NAME;
-        public const string DEFAULT_TABLE_NAME = "OrleansReminders";
-    }
+/// <summary>Options for Azure Table based reminder table.</summary>
+public class AzureTableReminderStorageOptions : AzureStorageOperationOptions
+{
+    /// <summary>
+    /// Table name for Azure Storage
+    /// </summary>
+    public override string TableName {
+        get;
+        set;
+    } = DEFAULT_TABLE_NAME;
+    public const string DEFAULT_TABLE_NAME = "OrleansReminders";
+}
 }

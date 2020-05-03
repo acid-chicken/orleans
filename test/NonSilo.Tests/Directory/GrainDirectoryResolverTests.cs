@@ -25,54 +25,54 @@ using Xunit.Abstractions;
 
 namespace NonSilo.Tests.Directory
 {
-    [TestCategory("BVT"), TestCategory("Directory")]
-    public class GrainDirectoryResolverTests
+[TestCategory("BVT"), TestCategory("Directory")]
+public class GrainDirectoryResolverTests
+{
+    private readonly IGrainDirectory azureDirectory = Substitute.For<IGrainDirectory>();
+    private readonly IGrainDirectory otherDirectory = Substitute.For<IGrainDirectory>();
+    private readonly IGrainDirectory againAnotherDirectory = Substitute.For<IGrainDirectory>();
+    private readonly IGrainDirectoryResolver target;
+
+    public GrainDirectoryResolverTests(ITestOutputHelper output)
     {
-        private readonly IGrainDirectory azureDirectory = Substitute.For<IGrainDirectory>();
-        private readonly IGrainDirectory otherDirectory = Substitute.For<IGrainDirectory>();
-        private readonly IGrainDirectory againAnotherDirectory = Substitute.For<IGrainDirectory>();
-        private readonly IGrainDirectoryResolver target;
+        this.azureDirectory = Substitute.For<IGrainDirectory>();
 
-        public GrainDirectoryResolverTests(ITestOutputHelper output)
+        var hostBuilder = new HostBuilder();
+        hostBuilder.UseOrleans(siloBuilder =>
         {
-            this.azureDirectory = Substitute.For<IGrainDirectory>();
+            siloBuilder
+            .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService(AzureTableDirectoryGrain.DIRECTORY, (sp, nameof) => this.azureDirectory))
+            .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService("OtherDirectory", (sp, nameof) => this.otherDirectory))
+            .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService("AgainAnotherDirectory", (sp, nameof) => this.againAnotherDirectory))
+            .ConfigureLogging(builder => builder.AddProvider(new XunitLoggerProvider(output)))
+            .UseLocalhostClustering();
+        });
 
-            var hostBuilder = new HostBuilder();
-            hostBuilder.UseOrleans(siloBuilder =>
-            {
-                siloBuilder
-                    .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService(AzureTableDirectoryGrain.DIRECTORY, (sp, nameof) => this.azureDirectory))
-                    .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService("OtherDirectory", (sp, nameof) => this.otherDirectory))
-                    .ConfigureServices((ctx, svc) => svc.AddSingletonNamedService("AgainAnotherDirectory", (sp, nameof) => this.againAnotherDirectory))
-                    .ConfigureLogging(builder => builder.AddProvider(new XunitLoggerProvider(output)))
-                    .UseLocalhostClustering();
-            });
+        var host = hostBuilder.Build();
 
-            var host = hostBuilder.Build();
-
-            this.target = host.Services.GetRequiredService<IGrainDirectoryResolver>();
-        }
-
-        [Fact]
-        public void UserProvidedDirectory()
-        {
-            var grainId = LegacyGrainId.GetGrainId(AzureTableDirectoryGrain.TYPECODE, Guid.NewGuid());
-            Assert.Same(this.azureDirectory, this.target.Resolve(grainId));
-        }
-
-        [Fact]
-        public void DefaultDhtDirectory()
-        {
-            var grainId = LegacyGrainId.GetGrainId(DefaultDirectoryGrain.TYPECODE, Guid.NewGuid());
-            Assert.Null(this.target.Resolve(grainId));
-        }
-
-        [Fact]
-        public void ListAllDirectories()
-        {
-            
-            var expected = new[] { this.azureDirectory, this.otherDirectory, this.againAnotherDirectory };
-            Assert.Equal(expected, this.target.Directories.ToArray());
-        }
+        this.target = host.Services.GetRequiredService<IGrainDirectoryResolver>();
     }
+
+    [Fact]
+    public void UserProvidedDirectory()
+    {
+        var grainId = LegacyGrainId.GetGrainId(AzureTableDirectoryGrain.TYPECODE, Guid.NewGuid());
+        Assert.Same(this.azureDirectory, this.target.Resolve(grainId));
+    }
+
+    [Fact]
+    public void DefaultDhtDirectory()
+    {
+        var grainId = LegacyGrainId.GetGrainId(DefaultDirectoryGrain.TYPECODE, Guid.NewGuid());
+        Assert.Null(this.target.Resolve(grainId));
+    }
+
+    [Fact]
+    public void ListAllDirectories()
+    {
+
+        var expected = new[] { this.azureDirectory, this.otherDirectory, this.againAnotherDirectory };
+        Assert.Equal(expected, this.target.Directories.ToArray());
+    }
+}
 }

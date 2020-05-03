@@ -20,12 +20,15 @@ namespace Orleans.GrainDirectory.AzureStorage
 // No default namespace intentionally to cause compile errors if something is not defined
 #endif
 {
-    /// <summary>
-    /// Specify options used for AzureTableBasedMembership
-    /// </summary>
-    public class AzureStorageClusteringOptions : AzureStorageOperationOptions
-    {
-        public override string TableName { get; set; } = DEFAULT_TABLE_NAME;
-        public const string DEFAULT_TABLE_NAME = "OrleansSiloInstances";
-    }
+/// <summary>
+/// Specify options used for AzureTableBasedMembership
+/// </summary>
+public class AzureStorageClusteringOptions : AzureStorageOperationOptions
+{
+    public override string TableName {
+        get;
+        set;
+    } = DEFAULT_TABLE_NAME;
+    public const string DEFAULT_TABLE_NAME = "OrleansSiloInstances";
+}
 }
